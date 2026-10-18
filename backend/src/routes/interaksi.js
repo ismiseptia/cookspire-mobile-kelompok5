@@ -10,15 +10,6 @@ async function ambilResep(id) {
   return rows[0];
 }
 
-// Buat notifikasi untuk pemilik resep (US-13), kecuali dia sendiri yang berinteraksi
-async function notifPemilik(resep, idPengirim, tipe) {
-  if (resep.id_user === idPengirim) return;
-  await db.query(
-    'INSERT INTO notifikasi (id_user, id_resep, id_pengirim, tipe) VALUES (?, ?, ?, ?)',
-    [resep.id_user, resep.id_resep, idPengirim, tipe]
-  );
-}
-
 // US-07: beri / ubah rating (1 user = 1 rating per resep)
 router.post(
   '/:id/rating',

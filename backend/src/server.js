@@ -24,7 +24,6 @@ app.use('/api/resep', require('./routes/resep'));
 app.use('/api/resep', require('./routes/interaksi')); // /:id/rating, /:id/komentar, /:id/favorit
 app.use('/api/favorit', require('./routes/favorit'));
 app.use('/api/user', require('./routes/user'));
-app.use('/api/notifikasi', require('./routes/notifikasi'));
 
 app.use((req, res) => res.status(404).json({ message: 'Endpoint tidak ditemukan' }));
 

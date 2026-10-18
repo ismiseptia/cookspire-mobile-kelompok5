@@ -149,3 +149,5 @@ alter table RESEP_BAHAN add constraint FK_MEMILIKI_BAHAN foreign key (ID_BAHAN)
 
 alter table RESEP_BAHAN add constraint FK_DIGUNAKAN_DALAM foreign key (ID_RESEP)
       references RESEP (ID_RESEP) on delete restrict on update restrict;
+
+alter table BAHAN add unique (NAMA_BAHAN);

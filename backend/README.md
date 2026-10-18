@@ -49,8 +49,6 @@ Header untuk endpoint bertanda (login): `Authorization: Bearer <token>`
 | POST | /api/resep/:id/favorit (login) | toggle favorit | US-09 |
 | GET | /api/favorit (login) | koleksi favorit (lengkap dengan bahan & langkah, untuk offline) | US-09 |
 | GET | /api/user/:id | profil pembuat + daftar resepnya | US-10 |
-| GET | /api/notifikasi (login) | notifikasi komentar/rating | US-13 |
-| PATCH | /api/notifikasi/baca (login) | tandai semua dibaca | US-13 |
 
 Format `bahan` (dikirim sebagai string JSON):
 ```json
