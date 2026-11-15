@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Waktu pembuatan: 04 Nov 2026 pada 09.40
+-- Waktu pembuatan: 15 Nov 2026 pada 15.39
 -- Versi server: 10.4.32-MariaDB
 -- Versi PHP: 8.2.12
 
@@ -37,15 +37,31 @@ CREATE TABLE `bahan` (
 --
 
 INSERT INTO `bahan` (`id_bahan`, `nama_bahan`) VALUES
+(23, 'Air Panas (untuk coklat)'),
+(20, 'Air Panas (untuk dalgona)'),
 (3, 'Bawang Merah'),
 (2, 'Bawang Putih'),
 (4, 'Cabai'),
+(21, 'Coklat Bubuk'),
+(16, 'Danish Pastry'),
+(18, 'Es Batu'),
 (9, 'Garam'),
 (8, 'Gula'),
+(11, 'Gula Pasir'),
 (7, 'Kecap Manis'),
+(25, 'Kencur'),
+(19, 'Kopi Instan Nescafe'),
+(12, 'Kuning Telur'),
 (6, 'Nasi'),
+(15, 'Pasta Vanilla'),
+(14, 'Susu Cair'),
+(22, 'Susu Kental Manis Putih'),
+(17, 'Susu UHT Full Cream'),
+(24, 'Tahu'),
 (5, 'Telur'),
-(1, 'Tempe');
+(1, 'Tempe'),
+(13, 'Tepung Maizena'),
+(10, 'Whipping Cream Dairy');
 
 -- --------------------------------------------------------
 
@@ -65,7 +81,8 @@ CREATE TABLE `favorit` (
 --
 
 INSERT INTO `favorit` (`id_favorit`, `id_user`, `id_resep`, `tanggal_favorit`) VALUES
-(1, 2, 1, '2026-10-15 12:12:17');
+(1, 2, 1, '2026-10-15 12:12:17'),
+(2, 4, 1, '2026-11-04 23:59:47');
 
 -- --------------------------------------------------------
 
@@ -108,7 +125,11 @@ CREATE TABLE `komentar` (
 --
 
 INSERT INTO `komentar` (`id_komentar`, `id_user`, `id_resep`, `teks_komentar`, `tanggal_komentar`) VALUES
-(1, 2, 1, 'Enak dan mudah dibuat!', '2026-10-15 12:12:17');
+(1, 2, 1, 'Enak dan mudah dibuat!', '2026-10-15 12:12:17'),
+(2, 1, 1, 'Boleh nih di coba', '2026-11-04 22:35:58'),
+(3, 1, 2, 'Bagus', '2026-11-06 10:40:03'),
+(4, 1, 2, 'Mantap', '2026-11-06 10:40:55'),
+(5, 4, 5, 'Bahannya emang itu doang tah', '2026-11-12 13:50:57');
 
 -- --------------------------------------------------------
 
@@ -146,7 +167,9 @@ CREATE TABLE `rating` (
 
 INSERT INTO `rating` (`id_rating`, `id_user`, `id_resep`, `skor_rating`, `tanggal_rating`) VALUES
 (1, 2, 1, 5, '2026-10-15 12:12:17'),
-(2, 1, 2, 4, '2026-10-15 12:12:17');
+(2, 1, 2, 5, '2026-11-06 10:40:55'),
+(3, 1, 1, 4, '2026-11-04 22:35:58'),
+(6, 4, 5, 1, '2026-11-12 13:50:57');
 
 -- --------------------------------------------------------
 
@@ -170,7 +193,10 @@ CREATE TABLE `resep` (
 
 INSERT INTO `resep` (`id_resep`, `id_user`, `id_kategori`, `nama_resep`, `langkah`, `foto`, `tanggal_dibuat`) VALUES
 (1, 1, 1, 'Nasi Goreng Telur', '1. Tumis bawang.\n2. Masukkan nasi dan kecap.\n3. Tambahkan telur, aduk rata.', NULL, '2026-10-15 12:12:16'),
-(2, 2, 1, 'Tempe Orek', '1. Potong tempe.\n2. Goreng setengah matang.\n3. Tumis dengan bumbu dan kecap.', NULL, '2026-10-15 12:12:16');
+(2, 2, 1, 'Tempe Orek', '1. Potong tempe.\n2. Goreng setengah matang.\n3. Tumis dengan bumbu dan kecap.', NULL, '2026-10-15 12:12:16'),
+(3, 4, 3, 'Portuguese Egg Tart Simple', 'Ambil Danish pastry cetak bulat / sesuaikan dengan loyang, kemudian sisihkan\nCampur semua bahan jadi satu, kemudian saring\nTuangkan ke dalam cetakan yang sudah ada adonan pastry di dalamnya tadi, kemudian panggang di suhu 200 derajat Celcius sampai matang kurang lebih 35 menit ( sesuaikan oven di rumah masing2)\nJika sudah matang keluarkan dari oven, dan juga lepaskan dari cetakannya biar dingin suhu ruang, lalu sajikan', '🍰', '2026-11-04 20:54:43'),
+(4, 4, 2, 'Es Kopi Susu Cokelat', 'Panaskan air hingga mendidih untuk melarutkan kopi dan cokelat\nMembuat Dalgona kopi => (bila punya mikk frother) Tuangkan 2 SDM air panas ke gelas berisi kopi dan gula tadi lalu kocok menggunakan milk frother sampai kopi mengembang\n(bila tidak punya mikk frother) masukkan kopi dan gula ke dalam botol kecil food grade yang tahan panas, tambahkan air panas, tutup botolnya hingga rapat lalu kocok botol sampai kopi mengembang\nMembuat coklat=> Siapkan gelas saji, masukkan 1 SDM coklat bubuk, 1 sachet susu kental manis putih, dan tuangkan 5 SDM air panas. Lalu aduk hingga tercampur rata. (Di sini, Anda dapat menambahkan gula pasir sesuai selera bila dirasa suka manis)\nMasukkan secukupnya es batu ke dalam gelas saji\nMasukkan 200 ml Susu UHT full cream ke dalam gelas saji\nTuang secukupnya kopi yang telah mengembang tadi di atasnya. Dan siap disajikan', '🥤', '2026-11-05 00:36:19'),
+(5, 8, 1, 'Tahu orek enak', 'Siapkan wajan\nLalu hidupkan', '🍲', '2026-11-06 10:42:41');
 
 -- --------------------------------------------------------
 
@@ -198,7 +224,24 @@ INSERT INTO `resep_bahan` (`id_resep_bahan`, `id_resep`, `id_bahan`, `jumlah`, `
 (5, 2, 1, 200.00000, 'gram'),
 (6, 2, 2, 2.00000, 'siung'),
 (7, 2, 4, 3.00000, 'buah'),
-(8, 2, 7, 3.00000, 'sdm');
+(8, 2, 7, 3.00000, 'sdm'),
+(9, 3, 10, 100.00000, 'ml'),
+(10, 3, 11, 85.00000, 'gram'),
+(11, 3, 12, 3.00000, 'butir '),
+(12, 3, 13, 20.00000, 'gram'),
+(13, 3, 14, 370.00000, 'ml'),
+(14, 3, 15, 1.00000, 'sdt'),
+(15, 3, 16, 1.00000, 'lembar'),
+(16, 4, 17, 200.00000, 'ml'),
+(17, 4, 18, 1.00000, 'secukupnya'),
+(18, 4, 19, 1.00000, 'sachet'),
+(19, 4, 11, 1.00000, 'sdm'),
+(20, 4, 20, 2.00000, 'sdm'),
+(21, 4, 21, 1.00000, 'sdm'),
+(22, 4, 22, 1.00000, 'sachet'),
+(23, 4, 23, 5.00000, 'sdm'),
+(24, 5, 24, 5.00000, '1'),
+(25, 5, 25, 2.00000, '2');
 
 -- --------------------------------------------------------
 
@@ -221,7 +264,17 @@ CREATE TABLE `user` (
 INSERT INTO `user` (`id_user`, `nama`, `email`, `password`, `tanggal_daftar`) VALUES
 (1, 'Ahmad Khoirur Rohman', 'ahmad@example.com', 'HASH_PLACEHOLDER', '2026-10-15 12:12:16'),
 (2, 'Ismi Septia Utami', 'ismi@example.com', 'HASH_PLACEHOLDER', '2026-10-15 12:12:16'),
-(3, 'Irur', 'tugasirur@gmail.com', '$2b$10$71bZOz/czmxfWBwkFH12xum9HmKPDr...xzG3ThRWl9b1SqNzHPGS', '2026-10-25 20:59:16');
+(4, 'Irur', 'irur@indo.com', '$2b$10$he9P8Qw8blMPjuga0YafL.1Msqjphr3k1T7w5LygH4k7qJhOW5ppK', '2026-11-04 20:06:08'),
+(5, 'Ismi', 'Ismi@indo.com', '$2b$10$27.t85p1Q3Yjlhes9gA98OmkIz68bZYd4pTr1cD3MJ7PG8xUFGht2', '2026-11-04 23:31:02'),
+(6, 'Hamdalah ', 'hamdalah@indo.com', '$2b$10$0wQ6obXL7VpP6ZNPgRsyR.3Hi6VFRc0Vr2rWJyiguIXY03WsOKz8m', '2026-11-04 23:31:55'),
+(7, 'Danis', 'danis@indo.com', '$2b$10$fNesb24pH/51H/idLTmSrO6ANQP8BpYTJeLvorD5QaNK.Raxi5l6G', '2026-11-04 23:32:20'),
+(8, 'Hamdalah', 'hamdalah@gmail.com', '$2b$10$EIcflc6SqM2vPNPaZ1MxLenIrV0Etq5r7cFzwKXUiB0V/EwFHbi3G', '2026-11-06 10:33:20'),
+(9, 'ismi', 'ismi@gmail.com', '$2b$10$42LrLaUM1auASxuyc3LeC.npjFJa9D9GNNlkoKPkIh57O//l3xgcS', '2026-11-12 13:43:13'),
+(10, 'ismi', 'ismi01@gmail.com', '$2b$10$O8y3uNecAZlogD6NCHqTEOrZt7zzsMK.0Ugrc5ep9BXcTCcs9Ucyq', '2026-11-12 13:45:55'),
+(11, 'rahmatika', 'rahmatika@gmail.com', '$2b$10$N.jGevQKFyZs7iZU3nTpTuluEG7LyHu5TZNnNDfRCitCVLO6P43By', '2026-11-12 13:51:44'),
+(12, 'ismi', 'ismi', '$2b$10$MjEQU5hoBlzsslbZmSQGk.CKqnhsd6O4YIXg5TA2PaJz4onIyLEDy', '2026-11-12 14:09:29'),
+(13, 'ismi', 'ismi02@gmail.com', '$2b$10$XMqDuCWA6oMZF5/7FTrgouIWN81GBWNCrFiQZqBBZmFGTg3WekEW.', '2026-11-12 14:12:07'),
+(14, 'Rohman', 'tugasirur@gmail.com', '$2b$10$bp7yhQg6yL/nSYIDEGcclOPKPsPzLYYGclX0AgJvJ8Z.SsJqrqP/a', '2026-11-15 21:08:01');
 
 -- --------------------------------------------------------
 
@@ -331,13 +384,13 @@ ALTER TABLE `user`
 -- AUTO_INCREMENT untuk tabel `bahan`
 --
 ALTER TABLE `bahan`
-  MODIFY `id_bahan` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id_bahan` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- AUTO_INCREMENT untuk tabel `favorit`
 --
 ALTER TABLE `favorit`
-  MODIFY `id_favorit` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id_favorit` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT untuk tabel `kategori`
@@ -349,7 +402,7 @@ ALTER TABLE `kategori`
 -- AUTO_INCREMENT untuk tabel `komentar`
 --
 ALTER TABLE `komentar`
-  MODIFY `id_komentar` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id_komentar` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT untuk tabel `notifikasi`
@@ -367,19 +420,19 @@ ALTER TABLE `rating`
 -- AUTO_INCREMENT untuk tabel `resep`
 --
 ALTER TABLE `resep`
-  MODIFY `id_resep` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id_resep` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT untuk tabel `resep_bahan`
 --
 ALTER TABLE `resep_bahan`
-  MODIFY `id_resep_bahan` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id_resep_bahan` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- AUTO_INCREMENT untuk tabel `user`
 --
 ALTER TABLE `user`
-  MODIFY `id_user` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_user` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- Ketidakleluasaan untuk tabel pelimpahan (Dumped Tables)

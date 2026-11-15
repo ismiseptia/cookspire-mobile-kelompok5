@@ -10,20 +10,36 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import API from '../services/api';
 
+// Minimal 8 karakter berupa huruf atau angka
+const PASSWORD_REGEX = /^[A-Za-z0-9]{8,}$/;
+
 export default function ResetPasswordScreen({ route, navigation }) {
-  const { email, otp } = route.params;
+  const { email = '', otp = '' } = route.params || {};
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const isPasswordValid = PASSWORD_REGEX.test(newPassword);
+
   const handleResetPassword = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      Alert.alert('Perhatian', 'Password minimal terdiri dari 6 karakter.');
+    if (!email || !otp) {
+      Alert.alert('Sesi Tidak Valid', 'Silakan ulangi proses lupa password dari awal.');
+      navigation.navigate('ForgotPassword');
+      return;
+    }
+
+    if (!isPasswordValid) {
+      Alert.alert(
+        'Password Tidak Valid',
+        'Password baru harus minimal 8 karakter berupa huruf atau angka.'
+      );
       return;
     }
 
@@ -65,51 +81,81 @@ export default function ResetPasswordScreen({ route, navigation }) {
         </View>
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="lock-closed-outline" size={24} color="#E6A153" />
-        </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.iconCircle}>
+            <Ionicons name="lock-closed-outline" size={24} color="#E6A153" />
+          </View>
 
-        <Text style={styles.title}>Buat password baru</Text>
-        <Text style={styles.subtitle}>Pilih password yang kuat untuk akun {email}</Text>
+          <Text style={styles.title}>Buat password baru</Text>
+          <Text style={styles.subtitle}>Pilih password yang kuat untuk akun {email}</Text>
 
-        <Text style={styles.label}>Password baru</Text>
-        <View style={styles.inputBox}>
-          <Ionicons name="lock-closed-outline" size={18} color="#81A39D" style={{ marginRight: 10 }} />
-          <TextInput
-            style={styles.textInput}
-            value={newPassword}
-            onChangeText={setNewPassword}
-            placeholder="••••••••••••"
-            placeholderTextColor="#81A39D"
-            secureTextEntry={!showPass}
-          />
-          <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-            <Ionicons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={18} color="#81A39D" />
+          <Text style={styles.label}>Password baru</Text>
+          <View style={[styles.inputBox, { marginBottom: 6 }]}>
+            <Ionicons name="lock-closed-outline" size={18} color="#81A39D" style={{ marginRight: 10 }} />
+            <TextInput
+              style={styles.textInput}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              placeholder="Minimal 8 huruf atau angka"
+              placeholderTextColor="#81A39D"
+              secureTextEntry={!showPass}
+            />
+            <TouchableOpacity
+              onPress={() => setShowPass((prev) => !prev)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name={showPass ? 'eye-off-outline' : 'eye-outline'}
+                size={18}
+                color="#81A39D"
+              />
+            </TouchableOpacity>
+          </View>
+
+          <Text
+            style={[
+              styles.passwordHint,
+              newPassword.length > 0 && (isPasswordValid ? styles.hintValid : styles.hintInvalid),
+            ]}
+          >
+            * Minimal 8 karakter (huruf atau angka)
+          </Text>
+
+          <Text style={styles.label}>Konfirmasi password baru</Text>
+          <View style={styles.inputBox}>
+            <Ionicons name="lock-closed-outline" size={18} color="#81A39D" style={{ marginRight: 10 }} />
+            <TextInput
+              style={styles.textInput}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder="Ulangi password baru"
+              placeholderTextColor="#81A39D"
+              secureTextEntry={!showPass}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.primaryBtn, loading && { opacity: 0.7 }]}
+            onPress={handleResetPassword}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color="#0D3B36" />
+            ) : (
+              <Text style={styles.primaryBtnText}>Simpan Password</Text>
+            )}
           </TouchableOpacity>
-        </View>
-
-        <Text style={styles.label}>Konfirmasi password baru</Text>
-        <View style={styles.inputBox}>
-          <Ionicons name="lock-closed-outline" size={18} color="#81A39D" style={{ marginRight: 10 }} />
-          <TextInput
-            style={styles.textInput}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            placeholder="••••••••••••"
-            placeholderTextColor="#81A39D"
-            secureTextEntry={!showPass}
-          />
-        </View>
-
-        <TouchableOpacity style={styles.primaryBtn} onPress={handleResetPassword} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#0D3B36" />
-          ) : (
-            <Text style={styles.primaryBtnText}>Simpan Password</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -153,7 +199,8 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    marginTop: 20,
+    paddingTop: 20,
+    paddingBottom: 32,
   },
   iconCircle: {
     width: 48,
@@ -194,6 +241,18 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#FFFFFF',
     fontSize: 14,
+  },
+  passwordHint: {
+    color: '#81A39D',
+    fontSize: 11,
+    marginLeft: 4,
+    marginBottom: 16,
+  },
+  hintValid: {
+    color: '#4ADE80',
+  },
+  hintInvalid: {
+    color: '#FF6B6B',
   },
   primaryBtn: {
     backgroundColor: '#FFFFFF',

@@ -6,7 +6,7 @@ const db = require('../config/db');
 router.get('/', async (req, res) => {
   try {
     const { search, category } = req.query;
-    
+
     let sql = `
       SELECT 
         r.id_resep AS id,
@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
       LEFT JOIN komentar km ON r.id_resep = km.id_resep
       WHERE 1=1
     `;
-    
+
     const params = [];
 
     if (search) {
@@ -37,7 +37,10 @@ router.get('/', async (req, res) => {
       params.push(category);
     }
 
-    sql += ' GROUP BY r.id_resep ORDER BY r.tanggal_dibuat DESC';
+    sql += `
+      GROUP BY r.id_resep, r.nama_resep, k.nama_kategori, u.nama, r.foto, r.tanggal_dibuat
+      ORDER BY r.tanggal_dibuat DESC
+    `;
 
     const [rows] = await db.query(sql, params);
     res.json(rows);
@@ -75,9 +78,8 @@ router.get('/:id', async (req, res) => {
   try {
     const recipeId = req.params.id;
 
-    // Query Utama dengan menghitung total resep milik penulis
-    const [recipes] = await db.query(`
-      SELECT 
+    const [recipes] = await db.query(
+      `SELECT 
         r.id_resep AS id,
         r.id_user AS author_id,
         r.nama_resep AS title,
@@ -94,22 +96,24 @@ router.get('/:id', async (req, res) => {
       LEFT JOIN rating rt ON r.id_resep = rt.id_resep
       LEFT JOIN komentar km ON r.id_resep = km.id_resep
       WHERE r.id_resep = ?
-      GROUP BY r.id_resep
-    `, [recipeId]);
+      GROUP BY r.id_resep, r.id_user, r.nama_resep, k.nama_kategori, u.nama, r.foto, r.langkah`,
+      [recipeId]
+    );
 
     if (recipes.length === 0) {
       return res.status(404).json({ message: 'Resep tidak ditemukan' });
     }
 
-    const [ingredientsRaw] = await db.query(`
-      SELECT 
+    const [ingredientsRaw] = await db.query(
+      `SELECT 
         b.nama_bahan AS name,
         rb.jumlah,
         rb.satuan
       FROM resep_bahan rb
       JOIN bahan b ON rb.id_bahan = b.id_bahan
-      WHERE rb.id_resep = ?
-    `, [recipeId]);
+      WHERE rb.id_resep = ?`,
+      [recipeId]
+    );
 
     const ingredients = ingredientsRaw.map((item) => {
       const cleanNum = parseFloat(item.jumlah);
@@ -124,7 +128,6 @@ router.get('/:id', async (req, res) => {
     const recipeData = recipes[0];
     const totalRecipes = recipeData.total_author_recipes || 0;
 
-    // Tentukan gelar/peran penulis secara dinamis berdasarkan jumlah resep
     let authorRole = 'Chef Amatir';
     if (totalRecipes >= 10) {
       authorRole = 'Master Chef';
@@ -134,8 +137,8 @@ router.get('/:id', async (req, res) => {
       authorRole = 'Hobi Masak';
     }
 
-    const stepsArray = recipeData.langkah 
-      ? recipeData.langkah.split('\n').filter(step => step.trim() !== '')
+    const stepsArray = recipeData.langkah
+      ? recipeData.langkah.split('\n').filter((step) => step.trim() !== '')
       : [];
 
     res.json({
@@ -152,14 +155,15 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// 4. Ambil Ulasan & Rating Resep
+// 4. Ambil Ulasan & Rating Resep (Menyertakan id_user untuk kepemilikan ulasan)
 router.get('/:id/reviews', async (req, res) => {
   try {
     const recipeId = req.params.id;
 
-    const [rows] = await db.query(`
-      SELECT 
+    const [rows] = await db.query(
+      `SELECT 
         k.id_komentar AS id,
+        k.id_user,
         u.nama AS author,
         k.teks_komentar AS comment,
         k.tanggal_komentar,
@@ -168,8 +172,9 @@ router.get('/:id/reviews', async (req, res) => {
       JOIN user u ON k.id_user = u.id_user
       LEFT JOIN rating rt ON k.id_resep = rt.id_resep AND k.id_user = rt.id_user
       WHERE k.id_resep = ?
-      ORDER BY k.tanggal_komentar DESC
-    `, [recipeId]);
+      ORDER BY k.tanggal_komentar DESC`,
+      [recipeId]
+    );
 
     res.json(rows);
   } catch (error) {
@@ -183,45 +188,92 @@ router.post('/:id/reviews', async (req, res) => {
   try {
     const recipeId = req.params.id;
     const { id_user, rating, comment } = req.body;
-    const userId = id_user || 1;
+
+    if (!id_user) {
+      return res.status(400).json({ message: 'ID pengguna tidak valid. Silakan login ulang.' });
+    }
 
     if (comment && comment.trim() !== '') {
-      await db.query(`
-        INSERT INTO komentar (id_user, id_resep, teks_komentar, tanggal_komentar)
-        VALUES (?, ?, ?, NOW())
-      `, [userId, recipeId, comment]);
+      await db.query(
+        `INSERT INTO komentar (id_user, id_resep, teks_komentar, tanggal_komentar)
+         VALUES (?, ?, ?, NOW())`,
+        [id_user, recipeId, comment.trim()]
+      );
     }
 
     if (rating) {
-      await db.query(`
-        INSERT INTO rating (id_user, id_resep, skor_rating, tanggal_rating)
-        VALUES (?, ?, ?, NOW())
-        ON DUPLICATE KEY UPDATE skor_rating = ?, tanggal_rating = NOW()
-      `, [userId, recipeId, rating, rating]);
+      await db.query(
+        `INSERT INTO rating (id_user, id_resep, skor_rating, tanggal_rating)
+         VALUES (?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE skor_rating = ?, tanggal_rating = NOW()`,
+        [id_user, recipeId, rating, rating]
+      );
     }
 
-    res.status(201).json({ message: 'Ulasan berhasil ditambahkan!' });
+    res.status(201).json({ success: true, message: 'Ulasan berhasil ditambahkan!' });
   } catch (error) {
     console.error('Error Post Review:', error);
     res.status(500).json({ message: 'Gagal menambahkan ulasan.' });
   }
 });
 
-// 6. Buat Resep Baru
+// 6. Edit Ulasan & Rating Milik User
+router.put('/:id/reviews/:reviewId', async (req, res) => {
+  try {
+    const { id: recipeId, reviewId } = req.params;
+    const { id_user, rating, comment } = req.body;
+
+    if (!id_user) {
+      return res.status(400).json({ message: 'ID pengguna tidak ditemukan.' });
+    }
+
+    const [updateResult] = await db.query(
+      `UPDATE komentar
+       SET teks_komentar = ?, tanggal_komentar = NOW()
+       WHERE id_komentar = ? AND id_resep = ? AND id_user = ?`,
+      [comment ? comment.trim() : '', reviewId, recipeId, id_user]
+    );
+
+    if (updateResult.affectedRows === 0) {
+      return res.status(403).json({
+        message: 'Ulasan tidak ditemukan atau Anda tidak memiliki akses untuk mengubahnya.',
+      });
+    }
+
+    if (rating) {
+      await db.query(
+        `INSERT INTO rating (id_user, id_resep, skor_rating, tanggal_rating)
+         VALUES (?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE skor_rating = ?, tanggal_rating = NOW()`,
+        [id_user, recipeId, rating, rating]
+      );
+    }
+
+    res.json({ success: true, message: 'Ulasan berhasil diperbarui!' });
+  } catch (error) {
+    console.error('Error Update Review:', error);
+    res.status(500).json({ message: 'Gagal memperbarui ulasan.' });
+  }
+});
+
+// 7. Buat Resep Baru
 router.post('/', async (req, res) => {
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
 
     const { id_user, nama_resep, id_kategori, foto, ingredients, steps } = req.body;
-    const userId = id_user || 1;
+    if (!id_user) {
+      await connection.rollback();
+      return res.status(400).json({ success: false, message: 'ID pengguna tidak valid.' });
+    }
 
     const langkahText = Array.isArray(steps) ? steps.join('\n') : steps;
 
     const [recipeResult] = await connection.query(
       `INSERT INTO resep (id_user, id_kategori, nama_resep, langkah, foto, tanggal_dibuat)
        VALUES (?, ?, ?, ?, ?, NOW())`,
-      [userId, id_kategori || 1, nama_resep, langkahText, foto || '🥘']
+      [id_user, id_kategori || 1, nama_resep, langkahText, foto || '🥘']
     );
 
     const recipeId = recipeResult.insertId;
@@ -230,7 +282,7 @@ router.post('/', async (req, res) => {
       for (const ing of ingredients) {
         if (!ing.name || !ing.name.trim()) continue;
 
-        let [existingBahan] = await connection.query(
+        const [existingBahan] = await connection.query(
           'SELECT id_bahan FROM bahan WHERE LOWER(nama_bahan) = LOWER(?)',
           [ing.name.trim()]
         );
@@ -269,7 +321,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// 7. Ambil Resep Milik User
+// 8. Ambil Resep Milik User
 router.get('/user/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -287,7 +339,7 @@ router.get('/user/:userId', async (req, res) => {
       LEFT JOIN rating rt ON r.id_resep = rt.id_resep
       LEFT JOIN komentar km ON r.id_resep = km.id_resep
       WHERE r.id_user = ?
-      GROUP BY r.id_resep
+      GROUP BY r.id_resep, r.nama_resep, k.nama_kategori, r.foto, r.tanggal_dibuat
       ORDER BY r.tanggal_dibuat DESC`,
       [userId]
     );
@@ -314,7 +366,7 @@ router.get('/user/:userId', async (req, res) => {
   }
 });
 
-// 8. Hapus Resep
+// 9. Hapus Resep
 router.delete('/:id', async (req, res) => {
   try {
     const recipeId = req.params.id;
@@ -326,14 +378,14 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// 9. Update Resep
+// 10. Update Resep
 router.put('/:id', async (req, res) => {
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
 
     const recipeId = req.params.id;
-    const { nama_resep, id_kategori, foto, steps } = req.body;
+    const { nama_resep, id_kategori, foto, ingredients, steps } = req.body;
 
     const langkahText = Array.isArray(steps) ? steps.join('\n') : steps;
 
@@ -343,6 +395,36 @@ router.put('/:id', async (req, res) => {
        WHERE id_resep = ?`,
       [nama_resep, id_kategori || 1, foto || '🥘', langkahText, recipeId]
     );
+
+    if (Array.isArray(ingredients)) {
+      await connection.query('DELETE FROM resep_bahan WHERE id_resep = ?', [recipeId]);
+
+      for (const ing of ingredients) {
+        if (!ing.name || !ing.name.trim()) continue;
+
+        const [existingBahan] = await connection.query(
+          'SELECT id_bahan FROM bahan WHERE LOWER(nama_bahan) = LOWER(?)',
+          [ing.name.trim()]
+        );
+
+        let bahanId;
+        if (existingBahan.length > 0) {
+          bahanId = existingBahan[0].id_bahan;
+        } else {
+          const [newBahan] = await connection.query(
+            'INSERT INTO bahan (nama_bahan) VALUES (?)',
+            [ing.name.trim()]
+          );
+          bahanId = newBahan.insertId;
+        }
+
+        await connection.query(
+          `INSERT INTO resep_bahan (id_resep, id_bahan, jumlah, satuan)
+           VALUES (?, ?, ?, ?)`,
+          [recipeId, bahanId, ing.jumlah || 1, ing.satuan || 'secukupnya']
+        );
+      }
+    }
 
     await connection.commit();
     res.json({ success: true, message: 'Resep berhasil diperbarui!' });
@@ -355,7 +437,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// 10. Ambil Resep Favorit User
+// 11. Ambil Resep Favorit User
 router.get('/favorites/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -386,7 +468,10 @@ router.get('/favorites/:userId', async (req, res) => {
       params.push(category);
     }
 
-    sql += ' GROUP BY r.id_resep ORDER BY f.tanggal_favorit DESC';
+    sql += `
+      GROUP BY r.id_resep, r.nama_resep, k.nama_kategori, u.nama, r.foto, f.tanggal_favorit
+      ORDER BY f.tanggal_favorit DESC
+    `;
 
     const [rows] = await db.query(sql, params);
     res.json(rows);
@@ -396,24 +481,26 @@ router.get('/favorites/:userId', async (req, res) => {
   }
 });
 
-// 11. Toggle Favorit
+// 12. Toggle Favorit
 router.post('/favorites/toggle', async (req, res) => {
   try {
     const { id_user, id_resep } = req.body;
-    const userId = id_user || 1;
+    if (!id_user) {
+      return res.status(400).json({ message: 'ID pengguna tidak valid.' });
+    }
 
     const [existing] = await db.query(
       'SELECT * FROM favorit WHERE id_user = ? AND id_resep = ?',
-      [userId, id_resep]
+      [id_user, id_resep]
     );
 
     if (existing.length > 0) {
-      await db.query('DELETE FROM favorit WHERE id_user = ? AND id_resep = ?', [userId, id_resep]);
+      await db.query('DELETE FROM favorit WHERE id_user = ? AND id_resep = ?', [id_user, id_resep]);
       return res.json({ isFavorite: false, message: 'Dihapus dari favorit.' });
     } else {
       await db.query(
         'INSERT INTO favorit (id_user, id_resep, tanggal_favorit) VALUES (?, ?, NOW())',
-        [userId, id_resep]
+        [id_user, id_resep]
       );
       return res.json({ isFavorite: true, message: 'Ditambahkan ke favorit.' });
     }
@@ -423,12 +510,12 @@ router.post('/favorites/toggle', async (req, res) => {
   }
 });
 
-// 12. Notifikasi User
+// 13. Notifikasi User
 router.get('/notifications/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
-    const [rows] = await db.query(`
-      SELECT 
+    const [rows] = await db.query(
+      `SELECT 
         n.id_notifikasi AS id,
         n.tipe,
         n.sudah_dibaca,
@@ -440,8 +527,9 @@ router.get('/notifications/:userId', async (req, res) => {
       JOIN user u ON n.id_pengirim = u.id_user
       JOIN resep r ON n.id_resep = r.id_resep
       WHERE n.id_user = ?
-      ORDER BY n.tanggal DESC
-    `, [userId]);
+      ORDER BY n.tanggal DESC`,
+      [userId]
+    );
 
     res.json(rows);
   } catch (error) {
@@ -450,7 +538,7 @@ router.get('/notifications/:userId', async (req, res) => {
   }
 });
 
-// 13. Profil Pembuat Resep
+// 14. Profil Pembuat Resep
 router.get('/user-profile/:authorId', async (req, res) => {
   try {
     const authorId = req.params.authorId;
@@ -464,8 +552,8 @@ router.get('/user-profile/:authorId', async (req, res) => {
       return res.status(404).json({ message: 'Pengguna tidak ditemukan.' });
     }
 
-    const [recipes] = await db.query(`
-      SELECT 
+    const [recipes] = await db.query(
+      `SELECT 
         r.id_resep AS id,
         r.nama_resep AS title,
         k.nama_kategori AS category,
@@ -477,20 +565,22 @@ router.get('/user-profile/:authorId', async (req, res) => {
       LEFT JOIN rating rt ON r.id_resep = rt.id_resep
       LEFT JOIN komentar km ON r.id_resep = km.id_resep
       WHERE r.id_user = ?
-      GROUP BY r.id_resep
-      ORDER BY r.tanggal_dibuat DESC
-    `, [authorId]);
+      GROUP BY r.id_resep, r.nama_resep, k.nama_kategori, r.foto, r.tanggal_dibuat
+      ORDER BY r.tanggal_dibuat DESC`,
+      [authorId]
+    );
 
-    const [stats] = await db.query(`
-      SELECT 
+    const [stats] = await db.query(
+      `SELECT 
         COUNT(DISTINCT r.id_resep) AS total_resep,
         COALESCE(ROUND(AVG(rt.skor_rating), 1), 0.0) AS avg_rating,
         COUNT(DISTINCT f.id_favorit) AS total_favorit
       FROM resep r
       LEFT JOIN rating rt ON r.id_resep = rt.id_resep
       LEFT JOIN favorit f ON r.id_resep = f.id_resep
-      WHERE r.id_user = ?
-    `, [authorId]);
+      WHERE r.id_user = ?`,
+      [authorId]
+    );
 
     res.json({
       user: userRows[0],

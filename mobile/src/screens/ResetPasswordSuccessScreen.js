@@ -11,6 +11,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 export default function ResetPasswordSuccessScreen({ navigation }) {
+  const handleBackToLogin = () => {
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
@@ -30,7 +34,8 @@ export default function ResetPasswordSuccessScreen({ navigation }) {
 
         <TouchableOpacity
           style={styles.primaryBtn}
-          onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Login' }] })}
+          onPress={handleBackToLogin}
+          activeOpacity={0.85}
         >
           <Text style={styles.primaryBtnText}>Kembali ke Masuk</Text>
         </TouchableOpacity>

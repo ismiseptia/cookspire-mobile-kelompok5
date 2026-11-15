@@ -10,6 +10,8 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import API from '../services/api';
@@ -19,19 +21,34 @@ export default function ForgotPasswordScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   const handleSendCode = async () => {
-    if (!email.trim()) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
       Alert.alert('Perhatian', 'Masukkan email kamu terlebih dahulu.');
       return;
     }
 
     try {
       setLoading(true);
-      const res = await API.post('/auth/forgot-password', { email: email.trim() });
+      const res = await API.post('/auth/forgot-password', { email: normalizedEmail });
+
       if (res.data.success) {
-        navigation.navigate('VerifyOtp', {
-          email: email.trim(),
-          otpDev: res.data.otpDev,
-        });
+        const otpCode = res.data.otpDev;
+        const goToVerify = () =>
+          navigation.navigate('VerifyOtp', {
+            email: normalizedEmail,
+            otpDev: otpCode,
+          });
+
+        if (otpCode) {
+          Alert.alert(
+            'Kode OTP Terkirim',
+            `Kode verifikasi kamu adalah: ${otpCode}`,
+            [{ text: 'Lanjut', onPress: goToVerify }]
+          );
+        } else {
+          goToVerify();
+        }
       }
     } catch (error) {
       Alert.alert('Gagal', error.response?.data?.message || 'Email tidak terdaftar.');
@@ -55,49 +72,71 @@ export default function ForgotPasswordScreen({ navigation }) {
         </View>
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="key-outline" size={24} color="#E6A153" />
-        </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.iconCircle}>
+            <Ionicons name="key-outline" size={24} color="#E6A153" />
+          </View>
 
-        <Text style={styles.title}>Lupa password?</Text>
-        <Text style={styles.subtitle}>
-          Tenang, kami bantu. Masukkan email akunmu untuk menerima kode pemulihan.
-        </Text>
-
-        <Text style={styles.label}>Email pemulihan</Text>
-        <View style={styles.inputBox}>
-          <Ionicons name="mail-outline" size={18} color="#81A39D" style={{ marginRight: 10 }} />
-          <TextInput
-            style={styles.textInput}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="nama@email.com"
-            placeholderTextColor="#81A39D"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-        </View>
-
-        <View style={styles.infoBox}>
-          <Ionicons name="information-circle-outline" size={18} color="#E6A153" style={{ marginRight: 8 }} />
-          <Text style={styles.infoText}>
-            Kode 6 digit akan dikirim ke emailmu. Periksa juga folder spam jika belum masuk.
+          <Text style={styles.title}>Lupa password?</Text>
+          <Text style={styles.subtitle}>
+            Tenang, kami bantu. Masukkan email akunmu untuk menerima kode pemulihan.
           </Text>
-        </View>
 
-        <TouchableOpacity style={styles.primaryBtn} onPress={handleSendCode} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#0D3B36" />
-          ) : (
-            <Text style={styles.primaryBtnText}>Kirim Kode</Text>
-          )}
-        </TouchableOpacity>
+          <Text style={styles.label}>Email pemulihan</Text>
+          <View style={styles.inputBox}>
+            <Ionicons name="mail-outline" size={18} color="#81A39D" style={{ marginRight: 10 }} />
+            <TextInput
+              style={styles.textInput}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="nama@email.com"
+              placeholderTextColor="#81A39D"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
 
-        <TouchableOpacity style={styles.bottomLink} onPress={() => navigation.goBack()}>
-          <Text style={styles.bottomLinkText}>Sudah ingat? <Text style={{ color: '#E6A153' }}>Kembali ke Masuk</Text></Text>
-        </TouchableOpacity>
-      </View>
+          <View style={styles.infoBox}>
+            <Ionicons
+              name="information-circle-outline"
+              size={18}
+              color="#E6A153"
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.infoText}>
+              Kode 6 digit akan dikirim ke emailmu. Periksa juga folder spam jika belum masuk.
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.primaryBtn, loading && { opacity: 0.7 }]}
+            onPress={handleSendCode}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color="#0D3B36" />
+            ) : (
+              <Text style={styles.primaryBtnText}>Kirim Kode</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.bottomLink} onPress={() => navigation.goBack()}>
+            <Text style={styles.bottomLinkText}>
+              Sudah ingat? <Text style={{ color: '#E6A153', fontWeight: 'bold' }}>Kembali ke Masuk</Text>
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -141,7 +180,8 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    marginTop: 20,
+    paddingTop: 20,
+    paddingBottom: 32,
   },
   iconCircle: {
     width: 48,

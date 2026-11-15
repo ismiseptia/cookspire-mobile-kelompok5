@@ -9,15 +9,15 @@ import {
   SafeAreaView,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../services/api';
 
 export default function ProfileScreen({ navigation }) {
-  const [user, setUser] = useState({ nama: '', email: '', id_user: 1 });
+  const [user, setUser] = useState({ nama: '', email: '', bio: '', foto: null, id_user: null });
   const [stats, setStats] = useState({ total_resep: 0, total_favorit: 0, avg_rating: '0.0' });
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -28,27 +28,30 @@ export default function ProfileScreen({ navigation }) {
 
   const fetchUserProfile = async () => {
     try {
-      setLoading(true);
       const storedUser = await AsyncStorage.getItem('userData');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
+      if (!storedUser) return;
 
-        const userId = parsedUser.id_user || parsedUser.id || 1;
-        const res = await API.get(`/recipes/user/${userId}`);
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
 
-        if (res.data && res.data.stats) {
-          setStats({
-            total_resep: res.data.stats.total_resep || 0,
-            total_favorit: res.data.stats.total_ulasan || 0,
-            avg_rating: res.data.stats.avg_rating || '0.0',
-          });
-        }
+      const userId =
+        parsedUser.id_user ??
+        parsedUser.id ??
+        parsedUser.user?.id_user ??
+        parsedUser.user?.id;
+
+      if (!userId) return;
+
+      const res = await API.get(`/recipes/user/${userId}`);
+      if (res.data?.stats) {
+        setStats({
+          total_resep: res.data.stats.total_resep || 0,
+          total_favorit: res.data.stats.total_ulasan || 0,
+          avg_rating: res.data.stats.avg_rating || '0.0',
+        });
       }
     } catch (error) {
       console.error('Gagal memuat data profil:', error.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -59,15 +62,15 @@ export default function ProfileScreen({ navigation }) {
         text: 'Keluar',
         style: 'destructive',
         onPress: async () => {
-          await AsyncStorage.removeItem('userToken');
-          await AsyncStorage.removeItem('userData');
+          await AsyncStorage.multiRemove(['userToken', 'userData']);
           navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
         },
       },
     ]);
   };
 
-  const initialLetter = user.nama ? user.nama.charAt(0).toUpperCase() : 'U';
+  const initialLetter = user.nama?.trim() ? user.nama.trim().charAt(0).toUpperCase() : 'U';
+  const avatarUri = user.foto || user.avatar || null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -82,10 +85,17 @@ export default function ProfileScreen({ navigation }) {
         {/* User Info Header Card */}
         <View style={styles.userCard}>
           <View style={styles.avatarLarge}>
-            <Text style={styles.avatarText}>{initialLetter}</Text>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{initialLetter}</Text>
+            )}
           </View>
           <Text style={styles.userName}>{user.nama || 'Pengguna'}</Text>
-          <Text style={styles.userEmail}>{user.email || 'user@email.com'}</Text>
+          <Text style={[styles.userEmail, user.bio ? { marginBottom: 6 } : null]}>
+            {user.email || 'user@email.com'}
+          </Text>
+          {user.bio ? <Text style={styles.userBio}>{user.bio}</Text> : null}
 
           {/* Tombol Kapsul EDIT PROFIL */}
           <TouchableOpacity
@@ -154,7 +164,12 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('Notifications')}
           >
             <View style={styles.menuLeft}>
-              <Ionicons name="notifications-outline" size={20} color="#E6A153" style={styles.menuIcon} />
+              <Ionicons
+                name="notifications-outline"
+                size={20}
+                color="#E6A153"
+                style={styles.menuIcon}
+              />
               <Text style={styles.menuText}>Notifikasi</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#81A39D" />
@@ -177,11 +192,7 @@ export default function ProfileScreen({ navigation }) {
         </View>
 
         {/* Tombol Keluar dari Akun */}
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          activeOpacity={0.8}
-          onPress={handleLogout}
-        >
+        <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.8} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color="#FF6B6B" style={{ marginRight: 10 }} />
           <Text style={styles.logoutText}>Keluar dari Akun</Text>
         </TouchableOpacity>
@@ -224,6 +235,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     color: '#0D3B36',
@@ -240,6 +256,13 @@ const styles = StyleSheet.create({
     color: '#B2D0CA',
     fontSize: 12,
     marginBottom: 14,
+  },
+  userBio: {
+    color: '#81A39D',
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 14,
+    paddingHorizontal: 12,
   },
   editProfileBtn: {
     flexDirection: 'row',

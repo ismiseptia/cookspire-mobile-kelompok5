@@ -11,16 +11,22 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 import API from '../services/api';
+
+const DEFAULT_BIO = 'Suka masak rumahan dan berbagi resep sederhana.';
 
 export default function EditProfileScreen({ navigation }) {
   const [userId, setUserId] = useState(null);
   const [nama, setNama] = useState('');
   const [email, setEmail] = useState('');
-  const [bio, setBio] = useState('Suka masak rumahan dan berbagi resep sederhana.');
+  const [bio, setBio] = useState(DEFAULT_BIO);
+  const [foto, setFoto] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,11 +38,21 @@ export default function EditProfileScreen({ navigation }) {
     try {
       const storedUser = await AsyncStorage.getItem('userData');
       if (storedUser) {
-        const user = JSON.parse(storedUser);
-        setUserId(user.id_user || user.id || 1);
-        setNama(user.nama || user.name || '');
-        setEmail(user.email || '');
-        if (user.bio) setBio(user.bio);
+        const parsed = JSON.parse(storedUser);
+        const resolvedId =
+          parsed.id_user ??
+          parsed.id ??
+          parsed.user?.id_user ??
+          parsed.user?.id ??
+          null;
+
+        setUserId(resolvedId);
+        setNama(parsed.nama || parsed.name || '');
+        setEmail(parsed.email || '');
+        setFoto(parsed.foto || parsed.avatar || null);
+        if (parsed.bio !== undefined && parsed.bio !== null) {
+          setBio(parsed.bio);
+        }
       }
     } catch (error) {
       console.error('Gagal memuat data user:', error.message);
@@ -45,24 +61,68 @@ export default function EditProfileScreen({ navigation }) {
     }
   };
 
+  const handlePickPhoto = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Izin Diperlukan',
+          'Izinkan aplikasi mengakses galeri foto untuk mengubah foto profil.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions?.Images || ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets?.length > 0) {
+        setFoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error Pick Photo:', error.message);
+      Alert.alert('Gagal', 'Tidak dapat membuka galeri foto.');
+    }
+  };
+
   const handleSaveProfile = async () => {
-    if (!nama.trim()) {
+    const trimmedNama = nama.trim();
+    const trimmedBio = bio.trim();
+
+    if (!trimmedNama) {
       Alert.alert('Perhatian', 'Nama lengkap tidak boleh kosong.');
+      return;
+    }
+
+    if (!userId) {
+      Alert.alert('Sesi Tidak Valid', 'ID pengguna tidak ditemukan. Silakan login ulang.');
       return;
     }
 
     try {
       setSubmitting(true);
-      const response = await API.put(`/recipes/user/profile/${userId}`, {
-        nama: nama.trim(),
-        bio: bio.trim(),
+      const response = await API.put(`/auth/user/profile/${userId}`, {
+        nama: trimmedNama,
+        bio: trimmedBio,
       });
 
-      if (response.data.success) {
-        // Update data lokal di AsyncStorage
+      if (response.data?.success) {
         const currentData = await AsyncStorage.getItem('userData');
         const parsed = currentData ? JSON.parse(currentData) : {};
-        const updatedData = { ...parsed, nama: nama.trim(), bio: bio.trim() };
+
+        const updatedData = {
+          ...parsed,
+          ...(response.data.user || {}),
+          id_user: userId,
+          id: userId,
+          nama: trimmedNama,
+          bio: trimmedBio,
+          foto: foto || null,
+        };
+
         await AsyncStorage.setItem('userData', JSON.stringify(updatedData));
 
         Alert.alert('Sukses', 'Profil berhasil diperbarui!', [
@@ -71,13 +131,16 @@ export default function EditProfileScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Error Save Profile:', error.message);
-      Alert.alert('Gagal', 'Terjadi kesalahan saat menyimpan profil.');
+      Alert.alert(
+        'Gagal',
+        error.response?.data?.message || 'Terjadi kesalahan saat menyimpan profil.'
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
-  const initialLetter = nama ? nama.charAt(0).toUpperCase() : 'U';
+  const initialLetter = nama.trim() ? nama.trim().charAt(0).toUpperCase() : 'U';
 
   if (loading) {
     return (
@@ -100,81 +163,105 @@ export default function EditProfileScreen({ navigation }) {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Avatar Section */}
-        <View style={styles.avatarSection}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{initialLetter}</Text>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Avatar Section */}
+          <View style={styles.avatarSection}>
+            <TouchableOpacity
+              style={styles.avatarCircle}
+              onPress={handlePickPhoto}
+              activeOpacity={0.8}
+            >
+              {foto ? (
+                <Image source={{ uri: foto }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>{initialLetter}</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.changePhotoBtn}
+              onPress={handlePickPhoto}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+            >
+              <Ionicons name="camera-outline" size={16} color="#E6A153" style={{ marginRight: 6 }} />
+              <Text style={styles.changePhotoText}>Ubah Foto</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.changePhotoBtn}>
-            <Ionicons name="camera-outline" size={16} color="#E6A153" style={{ marginRight: 6 }} />
-            <Text style={styles.changePhotoText}>Ubah Foto</Text>
+
+          {/* Form Inputs */}
+          <Text style={styles.label}>Nama lengkap</Text>
+          <View style={styles.inputContainer}>
+            <Ionicons name="person-outline" size={18} color="#81A39D" style={styles.inputIcon} />
+            <TextInput
+              style={styles.textInput}
+              value={nama}
+              onChangeText={setNama}
+              placeholder="Masukkan nama lengkap"
+              placeholderTextColor="#81A39D"
+            />
+          </View>
+
+          <Text style={styles.label}>Email - hanya baca</Text>
+          <View style={[styles.inputContainer, styles.readOnlyInput]}>
+            <Ionicons name="mail-outline" size={18} color="#81A39D" style={styles.inputIcon} />
+            <TextInput
+              style={[styles.textInput, { color: '#81A39D' }]}
+              value={email}
+              editable={false}
+            />
+            <Ionicons name="lock-closed" size={16} color="#81A39D" />
+          </View>
+
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={() => navigation.navigate('AccountSettings')}
+          >
+            <Text style={styles.linkText}>Ubah email melalui Pengaturan Akun →</Text>
           </TouchableOpacity>
-        </View>
 
-        {/* Form Inputs */}
-        <Text style={styles.label}>Nama lengkap</Text>
-        <View style={styles.inputContainer}>
-          <Ionicons name="person-outline" size={18} color="#81A39D" style={styles.inputIcon} />
-          <TextInput
-            style={styles.textInput}
-            value={nama}
-            onChangeText={setNama}
-            placeholder="Masukkan nama lengkap"
-            placeholderTextColor="#81A39D"
-          />
-        </View>
+          <Text style={styles.label}>Bio (opsional)</Text>
+          <View style={styles.multilineContainer}>
+            <TextInput
+              style={styles.multilineInput}
+              value={bio}
+              onChangeText={setBio}
+              placeholder="Tuliskan bio singkat tentang dirimu..."
+              placeholderTextColor="#81A39D"
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+          </View>
+          <Text style={styles.helperText}>Ceritakan sedikit tentang dirimu.</Text>
 
-        <Text style={styles.label}>Email - hanya baca</Text>
-        <View style={[styles.inputContainer, styles.readOnlyInput]}>
-          <Ionicons name="mail-outline" size={18} color="#81A39D" style={styles.inputIcon} />
-          <TextInput
-            style={[styles.textInput, { color: '#81A39D' }]}
-            value={email}
-            editable={false}
-          />
-          <Ionicons name="lock-closed" size={16} color="#81A39D" />
-        </View>
+          {/* Buttons */}
+          <TouchableOpacity
+            style={[styles.primaryButton, submitting && { opacity: 0.7 }]}
+            onPress={handleSaveProfile}
+            disabled={submitting}
+            activeOpacity={0.85}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#0D3B36" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Simpan Perubahan</Text>
+            )}
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.linkButton} 
-          onPress={() => navigation.navigate('AccountSettings')}
-        >
-          <Text style={styles.linkText}>Ubah email melalui Pengaturan Akun →</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.label}>Bio (opsional)</Text>
-        <View style={styles.multilineContainer}>
-          <TextInput
-            style={styles.multilineInput}
-            value={bio}
-            onChangeText={setBio}
-            placeholder="Tuliskan bio singkat tentang dirimu..."
-            placeholderTextColor="#81A39D"
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
-        </View>
-        <Text style={styles.helperText}>Ceritakan sedikit tentang dirimu.</Text>
-
-        {/* Buttons */}
-        <TouchableOpacity 
-          style={styles.primaryButton} 
-          onPress={handleSaveProfile} 
-          disabled={submitting}
-        >
-          {submitting ? (
-            <ActivityIndicator color="#0D3B36" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Simpan Perubahan</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelButtonText}>Batal</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.cancelButtonText}>Batal</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -225,6 +312,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     color: '#0D3B36',
@@ -234,6 +326,8 @@ const styles = StyleSheet.create({
   changePhotoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
   changePhotoText: {
     color: '#E6A153',
