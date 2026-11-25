@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme';
 
 export default function ResetPasswordSuccessScreen({ navigation }) {
   const handleBackToLogin = () => {
@@ -17,13 +18,13 @@ export default function ResetPasswordSuccessScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       <View style={styles.content}>
         <View style={styles.successBadge}>
-          <Ionicons name="lock-closed" size={44} color="#0D3B36" />
+          <Ionicons name="lock-closed" size={44} color={colors.surface} />
           <View style={styles.checkBadge}>
-            <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+            <Ionicons name="checkmark" size={14} color={colors.surface} />
           </View>
         </View>
 
@@ -47,7 +48,7 @@ export default function ResetPasswordSuccessScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
@@ -59,7 +60,7 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
@@ -72,33 +73,33 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#2E7D32',
+    backgroundColor: colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 22,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 10,
   },
   subtitle: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 36,
   },
   primaryBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.primary,
     borderRadius: 25,
     paddingVertical: 14,
     width: '100%',
     alignItems: 'center',
   },
   primaryBtnText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontSize: 14,
     fontWeight: 'bold',
   },

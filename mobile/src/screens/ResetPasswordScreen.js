@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import API from '../services/api';
+import { colors } from '../theme';
 
 // Minimal 8 karakter berupa huruf atau angka
 const PASSWORD_REGEX = /^[A-Za-z0-9]{8,}$/;
@@ -68,12 +69,12 @@ export default function ResetPasswordScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerBackText}>Kembali ke Verifikasi</Text>
         <View style={styles.stepBadge}>
@@ -91,7 +92,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.iconCircle}>
-            <Ionicons name="lock-closed-outline" size={24} color="#E6A153" />
+            <Ionicons name="lock-closed-outline" size={24} color={colors.primary} />
           </View>
 
           <Text style={styles.title}>Buat password baru</Text>
@@ -99,13 +100,13 @@ export default function ResetPasswordScreen({ route, navigation }) {
 
           <Text style={styles.label}>Password baru</Text>
           <View style={[styles.inputBox, { marginBottom: 6 }]}>
-            <Ionicons name="lock-closed-outline" size={18} color="#81A39D" style={{ marginRight: 10 }} />
+            <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
             <TextInput
               style={styles.textInput}
               value={newPassword}
               onChangeText={setNewPassword}
               placeholder="Minimal 8 huruf atau angka"
-              placeholderTextColor="#81A39D"
+              placeholderTextColor={colors.textMuted}
               secureTextEntry={!showPass}
             />
             <TouchableOpacity
@@ -115,7 +116,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
               <Ionicons
                 name={showPass ? 'eye-off-outline' : 'eye-outline'}
                 size={18}
-                color="#81A39D"
+                color={colors.textMuted}
               />
             </TouchableOpacity>
           </View>
@@ -131,13 +132,13 @@ export default function ResetPasswordScreen({ route, navigation }) {
 
           <Text style={styles.label}>Konfirmasi password baru</Text>
           <View style={styles.inputBox}>
-            <Ionicons name="lock-closed-outline" size={18} color="#81A39D" style={{ marginRight: 10 }} />
+            <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
             <TextInput
               style={styles.textInput}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               placeholder="Ulangi password baru"
-              placeholderTextColor="#81A39D"
+              placeholderTextColor={colors.textMuted}
               secureTextEntry={!showPass}
             />
           </View>
@@ -149,7 +150,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
             activeOpacity={0.85}
           >
             {loading ? (
-              <ActivityIndicator color="#0D3B36" />
+              <ActivityIndicator color={colors.surface} />
             ) : (
               <Text style={styles.primaryBtnText}>Simpan Password</Text>
             )}
@@ -163,7 +164,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
+    backgroundColor: colors.background,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 12,
   },
   header: {
@@ -176,24 +177,24 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
   },
   headerBackText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
     flex: 1,
   },
   stepBadge: {
-    backgroundColor: '#184943',
+    backgroundColor: colors.secondarySoft,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   stepBadgeText: {
-    color: '#E6A153',
+    color: colors.secondary,
     fontSize: 10,
     fontWeight: 'bold',
   },
@@ -206,32 +207,32 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
   title: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   subtitle: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 18,
     marginBottom: 24,
   },
   label: {
-    color: '#B2D0CA',
+    color: colors.text,
     fontSize: 12,
     marginBottom: 8,
   },
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -239,30 +240,30 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 14,
   },
   passwordHint: {
-    color: '#81A39D',
+    color: colors.textMuted,
     fontSize: 11,
     marginLeft: 4,
     marginBottom: 16,
   },
   hintValid: {
-    color: '#4ADE80',
+    color: colors.secondary,
   },
   hintInvalid: {
-    color: '#FF6B6B',
+    color: colors.danger,
   },
   primaryBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.primary,
     borderRadius: 25,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 20,
   },
   primaryBtnText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontSize: 14,
     fontWeight: 'bold',
   },

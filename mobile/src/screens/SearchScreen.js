@@ -11,6 +11,25 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme';
+
+const POPULAR_INGREDIENTS = [
+  'Tempe',
+  'Tahu',
+  'Ayam',
+  'Telur',
+  'Cabai',
+  'Bawang Putih',
+  'Kecap',
+];
+
+const CATEGORIES = [
+  { title: 'Makanan Utama', icon: '🍛' },
+  { title: 'Minuman', icon: '🥤' },
+  { title: 'Camilan', icon: '🍟' },
+  { title: 'Dessert', icon: '🍰' },
+  { title: 'Sayuran', icon: '🥬' },
+];
 
 export default function SearchScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,25 +40,21 @@ export default function SearchScreen({ navigation }) {
     'Sambal terasi',
   ]);
 
-  const popularIngredients = [
-    'Tempe', 'Tahu', 'Ayam', 'Telur',
-    'Cabai', 'Bawang Putih', 'Kecap'
-  ];
-
-  const categories = [
-  { title: 'Makanan Utama', icon: '🍲' },
-  { title: 'Minuman', icon: '🥤' },
-  { title: 'Camilan', icon: '🧆' },
-  { title: 'Dessert', icon: '🍰' },
-  { title: 'Sayuran', icon: '🥗' },
-];
-
   const handlePerformSearch = (queryToSearch = searchQuery, type = searchType) => {
     const trimmedQuery = queryToSearch.trim();
     if (!trimmedQuery) return;
 
     if (!recentSearches.includes(trimmedQuery)) {
       setRecentSearches([trimmedQuery, ...recentSearches.slice(0, 4)]);
+    }
+
+    if (type === 'Kategori') {
+      navigation.navigate('SearchResult', {
+        query: '',
+        category: trimmedQuery,
+        type,
+      });
+      return;
     }
 
     navigation.navigate('SearchResult', { query: trimmedQuery, type });
@@ -56,24 +71,21 @@ export default function SearchScreen({ navigation }) {
   const getPlaceholderText = () => {
     if (searchType === 'Nama') return 'Cari nama resep (misal: Soto Ayam)...';
     if (searchType === 'Kategori') return 'Cari kategori (misal: Makanan Utama)...';
-    return 'Cari berdasarkan bahan (misal: Tempe)...';
+    return 'Bahan yang kamu punya (misal: tempe, tahu)...';
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* Header Title */}
         <Text style={styles.headerTitle}>Cari Resep</Text>
 
-        {/* Search Bar Input */}
         <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={18} color="#81A39D" style={{ marginRight: 10 }} />
+          <Ionicons name="search-outline" size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
           <TextInput
             style={styles.searchInput}
             placeholder={getPlaceholderText()}
-            placeholderTextColor="#81A39D"
+            placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
             returnKeyType="search"
@@ -81,40 +93,37 @@ export default function SearchScreen({ navigation }) {
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color="#81A39D" />
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Tab Filter Tipe Pencarian */}
+        {searchType === 'Bahan' && (
+          <Text style={styles.hintText}>
+            Ketik beberapa bahan dipisah koma, misalnya <Text style={styles.hintBold}>tempe, tahu, cabai</Text>.
+            Resep yang paling banyak cocok tampil paling atas.
+          </Text>
+        )}
+
         <View style={styles.tabContainer}>
           {['Nama', 'Kategori', 'Bahan'].map((type) => (
             <TouchableOpacity
               key={type}
-              style={[
-                styles.tabButton,
-                searchType === type ? styles.tabButtonActive : null,
-              ]}
+              style={[styles.tabButton, searchType === type ? styles.tabButtonActive : null]}
               onPress={() => setSearchType(type)}
             >
-              <Text
-                style={[
-                  styles.tabText,
-                  searchType === type ? styles.tabTextActive : null,
-                ]}
-              >
+              <Text style={[styles.tabText, searchType === type ? styles.tabTextActive : null]}>
                 {type}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Section Bahan Populer */}
         <Text style={styles.sectionTitle}>Bahan Populer</Text>
         <View style={styles.chipGrid}>
-          {popularIngredients.map((item, index) => (
+          {POPULAR_INGREDIENTS.map((item) => (
             <TouchableOpacity
-              key={index}
+              key={item}
               style={styles.chip}
               onPress={() => handlePerformSearch(item, 'Bahan')}
             >
@@ -123,7 +132,6 @@ export default function SearchScreen({ navigation }) {
           ))}
         </View>
 
-        {/* Section Pencarian Terakhir */}
         {recentSearches.length > 0 && (
           <View style={styles.recentSection}>
             <View style={styles.recentHeader}>
@@ -133,29 +141,28 @@ export default function SearchScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            {recentSearches.map((item, index) => (
-              <View key={index} style={styles.recentRow}>
+            {recentSearches.map((item) => (
+              <View key={item} style={styles.recentRow}>
                 <TouchableOpacity
                   style={styles.recentItemLeft}
                   onPress={() => handlePerformSearch(item, searchType)}
                 >
-                  <Ionicons name="time-outline" size={16} color="#81A39D" style={{ marginRight: 12 }} />
+                  <Ionicons name="time-outline" size={16} color={colors.textMuted} style={{ marginRight: 12 }} />
                   <Text style={styles.recentText}>{item}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleRemoveRecent(item)}>
-                  <Ionicons name="close" size={16} color="#81A39D" />
+                  <Ionicons name="close" size={16} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
             ))}
           </View>
         )}
 
-        {/* Section Jelajahi Kategori */}
         <Text style={styles.sectionTitle}>Jelajahi Kategori</Text>
         <View style={styles.categoryGrid}>
-          {categories.map((cat, index) => (
-            <TouchableOpacity 
-              key={index} 
+          {CATEGORIES.map((cat) => (
+            <TouchableOpacity
+              key={cat.title}
               style={styles.categoryCard}
               onPress={() => handlePerformSearch(cat.title, 'Kategori')}
             >
@@ -166,7 +173,6 @@ export default function SearchScreen({ navigation }) {
             </TouchableOpacity>
           ))}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -175,8 +181,7 @@ export default function SearchScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
-    // Penyesuaian batas atas dari jam HP
+    backgroundColor: colors.background,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 12,
   },
   scrollContent: {
@@ -185,7 +190,7 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 20,
@@ -193,20 +198,31 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 25,
     paddingHorizontal: 16,
     height: 46,
     marginBottom: 16,
   },
+  hintText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  hintBold: {
+    color: colors.secondary,
+    fontWeight: '700',
+  },
   searchInput: {
     flex: 1,
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 25,
     padding: 4,
     marginBottom: 24,
@@ -218,19 +234,19 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   tabButtonActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.secondary,
   },
   tabText: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '500',
   },
   tabTextActive: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
   },
   sectionTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 15,
     fontWeight: 'bold',
     marginBottom: 12,
@@ -241,7 +257,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   chip: {
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     paddingVertical: 8,
     paddingHorizontal: 16,
@@ -249,7 +265,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   chipText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
   },
   recentSection: {
@@ -261,7 +277,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   clearText: {
-    color: '#E6A153',
+    color: colors.primary,
     fontSize: 12,
   },
   recentRow: {
@@ -270,7 +286,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#184943',
+    borderBottomColor: colors.surfaceAlt,
   },
   recentItemLeft: {
     flexDirection: 'row',
@@ -278,7 +294,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   recentText: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 13,
   },
   categoryGrid: {
@@ -288,7 +304,7 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     width: '48%',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 12,
     flexDirection: 'row',
@@ -299,13 +315,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#245D56',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
   },
   categoryCardText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 12,
     fontWeight: '600',
     flex: 1,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,50 +10,65 @@ import {
   Platform,
   ActivityIndicator,
   Modal,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../services/api';
+import RecipeThumbnail from '../components/RecipeThumbnail';
+import { colors } from '../theme';
+
+const resolveUserId = async () => {
+  const storedUser = await AsyncStorage.getItem('userData');
+  if (!storedUser) return null;
+  const parsed = JSON.parse(storedUser);
+  return parsed.id_user ?? parsed.id ?? parsed.user?.id_user ?? parsed.user?.id ?? null;
+};
 
 export default function MyRecipesScreen({ navigation }) {
   const [recipes, setRecipes] = useState([]);
   const [stats, setStats] = useState({ total_resep: 0, total_ulasan: 0, avg_rating: '0.0' });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Modal State untuk Konfirmasi Hapus (Figma 3.6)
   const [selectedRecipeToDelete, setSelectedRecipeToDelete] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      fetchMyRecipes();
-    });
-    return unsubscribe;
-  }, [navigation]);
-
-  const fetchMyRecipes = async () => {
+  const fetchMyRecipes = useCallback(async (showLoader = true) => {
+    if (showLoader) setLoading(true);
     try {
-      setLoading(true);
-      const storedUser = await AsyncStorage.getItem('userData');
-      const user = storedUser ? JSON.parse(storedUser) : {};
-      const userId = user.id_user || user.id || 1;
+      const userId = await resolveUserId();
+      if (!userId) {
+        setRecipes([]);
+        return;
+      }
 
       const response = await API.get(`/recipes/user/${userId}`);
-      setRecipes(response.data.recipes || []);
-      setStats(response.data.stats || { total_resep: 0, total_ulasan: 0, avg_rating: '0.0' });
+      setRecipes(response.data?.recipes || []);
+      setStats(response.data?.stats || { total_resep: 0, total_ulasan: 0, avg_rating: '0.0' });
     } catch (error) {
       console.error('Error Fetch My Recipes:', error.message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchMyRecipes(true);
+    });
+    return unsubscribe;
+  }, [navigation, fetchMyRecipes]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchMyRecipes(false);
+  }, [fetchMyRecipes]);
 
   const handleEditRecipe = (item) => {
     const recipeId = item.id || item.id_resep;
-    if (!recipeId) {
-      console.warn('ID resep tidak ditemukan pada item:', item);
-      return;
-    }
+    if (!recipeId) return;
     navigation.navigate('EditRecipe', { recipeId });
   };
 
@@ -64,7 +79,7 @@ export default function MyRecipesScreen({ navigation }) {
       await API.delete(`/recipes/${recipeId}`);
       setShowDeleteModal(false);
       setSelectedRecipeToDelete(null);
-      fetchMyRecipes();
+      fetchMyRecipes(false);
     } catch (error) {
       console.error('Gagal menghapus resep:', error.message);
     }
@@ -75,41 +90,39 @@ export default function MyRecipesScreen({ navigation }) {
 
     return (
       <View style={styles.card}>
-        {/* Kartu Utama untuk Membuka Detail Resep */}
         <TouchableOpacity
           style={styles.cardMainClick}
           activeOpacity={0.8}
           onPress={() => navigation.navigate('RecipeDetail', { recipeId })}
         >
           <View style={styles.cardImageCircle}>
-            <Text style={{ fontSize: 32 }}>{item.icon || '🥘'}</Text>
+            <RecipeThumbnail uri={item.icon} emojiSize={32} fallbackEmoji="🥘" />
           </View>
 
           <View style={styles.cardContent}>
-            <Text style={styles.recipeTitle}>{item.title || item.nama_resep}</Text>
+            <Text style={styles.recipeTitle} numberOfLines={1}>
+              {item.title || item.nama_resep}
+            </Text>
             <View style={styles.metaRow}>
-              <Ionicons name="star" size={13} color="#E6A153" />
+              <Ionicons name="star" size={13} color={colors.primary} />
               <Text style={styles.metaText}>
-                {item.rating || '0.0'} • {item.reviews_count || 0} ulasan
+                {Number(item.rating || 0).toFixed(1)} • {item.reviews_count || 0} ulasan
               </Text>
             </View>
           </View>
         </TouchableOpacity>
 
-        {/* Tombol Aksi: Edit & Hapus */}
         <View style={styles.actionRow}>
-          {/* Tombol Pensil (Edit) */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.iconBtn}
             activeOpacity={0.6}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={() => handleEditRecipe(item)}
           >
-            <Ionicons name="create-outline" size={20} color="#E6A153" />
+            <Ionicons name="create-outline" size={20} color={colors.secondary} />
           </TouchableOpacity>
 
-          {/* Tombol Tempat Sampah (Hapus) */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.iconBtn}
             activeOpacity={0.6}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -118,20 +131,19 @@ export default function MyRecipesScreen({ navigation }) {
               setShowDeleteModal(true);
             }}
           >
-            <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+            <Ionicons name="trash-outline" size={20} color={colors.danger} />
           </TouchableOpacity>
         </View>
       </View>
     );
   };
 
-  // Tampilan Kosong (Figma 3.4a)
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyBookCircle}>
         <Text style={{ fontSize: 50 }}>📖</Text>
         <View style={styles.plusBadge}>
-          <Ionicons name="add" size={16} color="#0D3B36" />
+          <Ionicons name="add" size={16} color={colors.surface} />
         </View>
       </View>
 
@@ -151,18 +163,16 @@ export default function MyRecipesScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
-      {/* Top Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Resep Saya</Text>
         <View style={{ width: 36 }} />
       </View>
 
-      {/* Stats Header Bar */}
       <View style={styles.statsCard}>
         <View style={styles.statBox}>
           <Text style={styles.statNumber}>{stats.total_resep}</Text>
@@ -178,21 +188,27 @@ export default function MyRecipesScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Daftar Resep Utama */}
       {loading ? (
-        <ActivityIndicator size="large" color="#E6A153" style={{ marginVertical: 40 }} />
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 40 }} />
       ) : (
         <FlatList
           data={recipes}
-          keyExtractor={(item, index) => (item.id || item.id_resep || index).toString()}
+          keyExtractor={(item, index) => String(item.id || item.id_resep || index)}
           renderItem={renderRecipeCard}
           ListEmptyComponent={renderEmptyState}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
         />
       )}
 
-      {/* Tombol Melayang Tambah Resep Baru */}
       {recipes.length > 0 && (
         <View style={styles.bottomBar}>
           <TouchableOpacity
@@ -204,7 +220,6 @@ export default function MyRecipesScreen({ navigation }) {
         </View>
       )}
 
-      {/* Modal Konfirmasi Hapus (Figma 3.6) */}
       <Modal
         visible={showDeleteModal}
         transparent
@@ -214,12 +229,12 @@ export default function MyRecipesScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.trashCircle}>
-              <Ionicons name="trash" size={24} color="#FF6B6B" />
+              <Ionicons name="trash" size={24} color={colors.danger} />
             </View>
 
             <Text style={styles.modalTitle}>Hapus resep ini?</Text>
             <Text style={styles.modalSubtitle}>
-              "{selectedRecipeToDelete?.title || selectedRecipeToDelete?.nama_resep}" bakal terhapus dan komentarnya bakal terhapus permanen.
+              "{selectedRecipeToDelete?.title || selectedRecipeToDelete?.nama_resep}" akan dipindahkan ke Sampah dan bisa dipulihkan kapan saja dari menu Profil.
             </Text>
 
             <View style={styles.modalActionRow}>
@@ -247,7 +262,7 @@ export default function MyRecipesScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
+    backgroundColor: colors.background,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 12,
   },
   header: {
@@ -261,18 +276,18 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     fontWeight: 'bold',
   },
   statsCard: {
     flexDirection: 'row',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     marginHorizontal: 20,
     borderRadius: 16,
     paddingVertical: 14,
@@ -285,15 +300,15 @@ const styles = StyleSheet.create({
   statBorder: {
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: '#245D56',
+    borderColor: colors.surfaceAlt,
   },
   statNumber: {
-    color: '#FFFFFF',
+    color: colors.primary,
     fontSize: 18,
     fontWeight: 'bold',
   },
   statLabel: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 11,
     marginTop: 2,
   },
@@ -304,7 +319,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 12,
     marginBottom: 12,
@@ -318,16 +333,17 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: '#245D56',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    overflow: 'hidden',
   },
   cardContent: {
     flex: 1,
   },
   recipeTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 4,
@@ -337,7 +353,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   metaText: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 11,
     marginLeft: 4,
   },
@@ -359,7 +375,7 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -372,26 +388,26 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 8,
   },
   emptySubtitle: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 24,
   },
   firstRecipeBtn: {
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
     borderRadius: 25,
     paddingVertical: 14,
     paddingHorizontal: 28,
@@ -399,7 +415,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   firstRecipeBtnText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
     fontSize: 14,
   },
@@ -408,30 +424,30 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#092A27',
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
     paddingVertical: 14,
   },
   addRecipeBtn: {
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
     borderRadius: 25,
     paddingVertical: 14,
     alignItems: 'center',
   },
   addRecipeBtnText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
     fontSize: 14,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: 'colors.overlay',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 30,
   },
   modalContent: {
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
@@ -441,19 +457,19 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: 'rgba(255,107,107,0.15)',
+    backgroundColor: 'colors.dangerSoft',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
   },
   modalTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 6,
   },
   modalSubtitle: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 12,
     textAlign: 'center',
     marginBottom: 20,
@@ -467,26 +483,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#81A39D',
+    borderColor: colors.border,
     borderRadius: 20,
     paddingVertical: 10,
     alignItems: 'center',
     marginRight: 10,
   },
   cancelBtnText: {
-    color: '#FFFFFF',
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },
   deleteConfirmBtn: {
     flex: 1,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.danger,
     borderRadius: 20,
     paddingVertical: 10,
     alignItems: 'center',
   },
   deleteConfirmBtnText: {
-    color: '#FFFFFF',
+    color: colors.surface,
     fontSize: 13,
     fontWeight: 'bold',
   },

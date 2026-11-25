@@ -1,16 +1,21 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
 const recipeRoutes = require('./routes/recipeRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 const app = express();
 
 // Middleware Global
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Akses Publik Folder Uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
@@ -20,6 +25,7 @@ app.get('/api/health', (req, res) => {
 // Mounting Route Utama API
 app.use('/api/auth', authRoutes);
 app.use('/api/recipes', recipeRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Handling 404 untuk endpoint yang tidak ditemukan
 app.use((req, res, next) => {

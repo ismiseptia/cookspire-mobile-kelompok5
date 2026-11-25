@@ -9,19 +9,20 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme';
 
 export default function AddRecipeSuccessScreen({ route, navigation }) {
   const { recipeId, title, category, icon } = route.params || {};
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       
       <View style={styles.content}>
         {/* Circle Success Icon */}
         <View style={styles.checkCircleBg}>
           <View style={styles.checkCircle}>
-            <Ionicons name="checkmark" size={54} color="#0D3B36" />
+            <Ionicons name="checkmark" size={54} color={colors.surface} />
           </View>
         </View>
 
@@ -65,7 +66,7 @@ export default function AddRecipeSuccessScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
+    backgroundColor: colors.background,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 12,
   },
   content: {
@@ -78,7 +79,7 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: '#184943',
+    backgroundColor: colors.secondarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
@@ -87,19 +88,19 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 22,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 10,
   },
   subtitle: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
@@ -108,7 +109,7 @@ const styles = StyleSheet.create({
   previewCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     padding: 14,
     width: '100%',
@@ -117,18 +118,18 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: '#245D56',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
   },
   cardTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 14,
     fontWeight: 'bold',
   },
   cardMeta: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 11,
     marginTop: 2,
   },
@@ -137,26 +138,26 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   whiteButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.primary,
     borderRadius: 25,
     paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 12,
   },
   whiteButtonText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
     fontSize: 14,
   },
   outlineButton: {
     borderWidth: 1,
-    borderColor: '#245D56',
+    borderColor: colors.primary,
     borderRadius: 25,
     paddingVertical: 14,
     alignItems: 'center',
   },
   outlineButtonText: {
-    color: '#FFFFFF',
+    color: colors.primary,
     fontWeight: 'bold',
     fontSize: 14,
   },

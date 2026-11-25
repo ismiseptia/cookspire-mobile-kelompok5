@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { colors } from '../theme';
 
 export default function AccountSettingsScreen({ navigation }) {
   const [nama, setNama] = useState('Rina Maharani');
@@ -43,12 +44,12 @@ export default function AccountSettingsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Pengaturan Akun</Text>
         <View style={{ width: 36 }} />
@@ -74,13 +75,13 @@ export default function AccountSettingsScreen({ navigation }) {
             onPress={() => Alert.alert('Kelola Email', 'Fitur pengubahan email akan dikirim via verifikasi email.')}
           >
             <View style={styles.iconBox}>
-              <Ionicons name="mail-outline" size={18} color="#FFFFFF" />
+              <Ionicons name="mail-outline" size={18} color={colors.surface} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.menuTitle}>Kelola email</Text>
               <Text style={styles.menuSubtitle}>{email}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#81A39D" />
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
 
           <View style={styles.divider} />
@@ -90,13 +91,13 @@ export default function AccountSettingsScreen({ navigation }) {
             onPress={() => Alert.alert('Ubah Password', 'Link riset password telah dikirim ke email kamu.')}
           >
             <View style={styles.iconBox}>
-              <Ionicons name="lock-closed-outline" size={18} color="#FFFFFF" />
+              <Ionicons name="lock-closed-outline" size={18} color={colors.surface} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.menuTitle}>Ubah password</Text>
               <Text style={styles.menuSubtitle}>Jaga keamanan akunmu</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#81A39D" />
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
@@ -105,7 +106,7 @@ export default function AccountSettingsScreen({ navigation }) {
         <View style={styles.cardGroup}>
           <View style={styles.switchRow}>
             <View style={styles.iconBox}>
-              <Ionicons name="chatbubble-outline" size={18} color="#FFFFFF" />
+              <Ionicons name="chatbubble-outline" size={18} color={colors.surface} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.menuTitle}>Komentar</Text>
@@ -116,8 +117,8 @@ export default function AccountSettingsScreen({ navigation }) {
             <Switch
               value={komentarNotif}
               onValueChange={setKomentarNotif}
-              trackColor={{ false: '#245D56', true: '#E6A153' }}
-              thumbColor={komentarNotif ? '#0D3B36' : '#81A39D'}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={komentarNotif ? colors.surface : colors.textMuted}
             />
           </View>
 
@@ -125,7 +126,7 @@ export default function AccountSettingsScreen({ navigation }) {
 
           <View style={styles.switchRow}>
             <View style={styles.iconBox}>
-              <Ionicons name="star-outline" size={18} color="#FFFFFF" />
+              <Ionicons name="star-outline" size={18} color={colors.surface} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.menuTitle}>Rating</Text>
@@ -136,15 +137,15 @@ export default function AccountSettingsScreen({ navigation }) {
             <Switch
               value={ratingNotif}
               onValueChange={setRatingNotif}
-              trackColor={{ false: '#245D56', true: '#E6A153' }}
-              thumbColor={ratingNotif ? '#0D3B36' : '#81A39D'}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={ratingNotif ? colors.surface : colors.textMuted}
             />
           </View>
         </View>
 
         {/* Bottom Link */}
         <TouchableOpacity style={styles.backLinkBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={16} color="#E6A153" style={{ marginRight: 6 }} />
+          <Ionicons name="arrow-back" size={16} color={colors.primary} style={{ marginRight: 6 }} />
           <Text style={styles.backLinkText}>Kembali ke Profil</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -155,7 +156,7 @@ export default function AccountSettingsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
+    backgroundColor: colors.background,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 12,
   },
   header: {
@@ -169,12 +170,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     padding: 16,
     marginVertical: 14,
@@ -194,28 +195,28 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
   },
   avatarText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
     fontSize: 18,
   },
   userName: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 15,
     fontWeight: 'bold',
   },
   userEmail: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
   sectionHeader: {
-    color: '#E6A153',
+    color: colors.secondary,
     fontSize: 11,
     fontWeight: 'bold',
     marginBottom: 8,
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   cardGroup: {
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     paddingHorizontal: 14,
     marginBottom: 16,
@@ -242,41 +243,41 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#245D56',
+    backgroundColor: colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   menuTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
     fontWeight: 'bold',
   },
   menuSubtitle: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 11,
     marginTop: 2,
   },
   divider: {
     height: 1,
-    backgroundColor: '#245D56',
+    backgroundColor: colors.surfaceAlt,
   },
   offlineBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 14,
     marginTop: 8,
     marginBottom: 24,
   },
   offlineTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
     fontWeight: 'bold',
   },
   offlineSubtitle: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 11,
     marginTop: 2,
     lineHeight: 15,
@@ -288,7 +289,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   backLinkText: {
-    color: '#E6A153',
+    color: colors.primary,
     fontSize: 13,
     fontWeight: 'bold',
   },

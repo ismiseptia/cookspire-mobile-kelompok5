@@ -13,6 +13,20 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../services/api';
+import AuthorAvatar from '../components/AuthorAvatar';
+
+// Waktu relatif: "Baru saja", "5 menit lalu", "2 hari lalu"
+const timeAgo = (value) => {
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return '';
+  const diff = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (diff < 60) return 'Baru saja';
+  if (diff < 3600) return `${Math.floor(diff / 60)} menit lalu`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} jam lalu`;
+  if (diff < 2592000) return `${Math.floor(diff / 86400)} hari lalu`;
+  return date.toLocaleDateString('id-ID');
+};
+import { colors } from '../theme';
 
 export default function NotificationScreen({ navigation }) {
   const [selectedFilter, setSelectedFilter] = useState('Semua');
@@ -26,18 +40,34 @@ export default function NotificationScreen({ navigation }) {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const storedUser = await AsyncStorage.getItem('userData');
-      const user = storedUser ? JSON.parse(storedUser) : {};
-      const userId = user.id_user || user.id || 1;
-
-      const res = await API.get(`/recipes/notifications/${userId}`);
-      setNotifications(res.data || []);
+      // User diambil server dari token JWT (dikirim otomatis oleh interceptor API)
+      const res = await API.get('/recipes/notifications');
+      setNotifications(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error('Error Fetch Notifications:', error.message);
     } finally {
       setLoading(false);
     }
   };
+
+  const markAllRead = async () => {
+    try {
+      await API.patch('/recipes/notifications/read-all');
+      setNotifications((prev) => prev.map((n) => ({ ...n, sudah_dibaca: 1 })));
+    } catch (error) {
+      console.error('Gagal menandai dibaca:', error.message);
+    }
+  };
+
+  const openNotification = async (item) => {
+    if (!item.sudah_dibaca) {
+      setNotifications((prev) => prev.map((n) => (n.id === item.id ? { ...n, sudah_dibaca: 1 } : n)));
+      API.patch(`/recipes/notifications/${item.id}/read`).catch(() => {});
+    }
+    navigation.navigate('RecipeDetail', { recipeId: item.id_resep });
+  };
+
+  const unreadCount = notifications.filter((n) => !n.sudah_dibaca).length;
 
   const filteredNotifs = notifications.filter((item) => {
     if (selectedFilter === 'Komentar') return item.tipe === 'komentar';
@@ -47,17 +77,11 @@ export default function NotificationScreen({ navigation }) {
 
   const renderNotifCard = ({ item }) => (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, !item.sudah_dibaca ? styles.cardUnread : null]}
       activeOpacity={0.8}
-      onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id_resep })}
+      onPress={() => openNotification(item)}
     >
-      <View style={styles.iconCircle}>
-        <Ionicons
-          name={item.tipe === 'komentar' ? 'chatbubble-ellipses' : 'star'}
-          size={20}
-          color="#E6A153"
-        />
-      </View>
+      <AuthorAvatar uri={item.pengirim_foto} name={item.pengirim_nama} size={40} style={{ marginRight: 12 }} />
 
       <View style={{ flex: 1 }}>
         <Text style={styles.notifText}>
@@ -66,21 +90,24 @@ export default function NotificationScreen({ navigation }) {
             ? `mengomentari resepmu "${item.nama_resep}"`
             : `memberi rating pada resep "${item.nama_resep}"`}
         </Text>
-        <Text style={styles.timeText}>Baru saja</Text>
+        <Text style={styles.timeText}>{timeAgo(item.tanggal)}</Text>
       </View>
+      {!item.sudah_dibaca && <View style={styles.unreadDot} />}
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifikasi</Text>
-        <View style={{ width: 36 }} />
+        <TouchableOpacity onPress={markAllRead} disabled={unreadCount === 0} style={{ width: 36, alignItems: 'flex-end' }}>
+          <Ionicons name="checkmark-done" size={22} color={unreadCount === 0 ? colors.textMuted : colors.secondary} />
+        </TouchableOpacity>
       </View>
 
       {/* Filters */}
@@ -99,7 +126,7 @@ export default function NotificationScreen({ navigation }) {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#E6A153" style={{ marginVertical: 40 }} />
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 40 }} />
       ) : (
         <FlatList
           data={filteredNotifs}
@@ -109,7 +136,7 @@ export default function NotificationScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyBox}>
-              <Ionicons name="notifications-off-outline" size={44} color="#81A39D" />
+              <Ionicons name="notifications-off-outline" size={44} color={colors.textMuted} />
               <Text style={styles.emptyText}>Belum ada notifikasi.</Text>
             </View>
           }
@@ -122,7 +149,7 @@ export default function NotificationScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
+    backgroundColor: colors.background,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 12,
   },
   header: {
@@ -136,12 +163,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -151,30 +178,40 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   filterChip: {
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     paddingVertical: 6,
     paddingHorizontal: 16,
     marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.secondary,
   },
   filterText: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 12,
   },
   filterTextActive: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
   },
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 30,
   },
+  cardUnread: {
+    backgroundColor: colors.primarySoft,
+  },
+  unreadDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+    marginLeft: 8,
+  },
   card: {
     flexDirection: 'row',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 14,
     marginBottom: 10,
@@ -184,22 +221,22 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#245D56',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   notifText: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 12,
     lineHeight: 16,
   },
   authorBold: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontWeight: 'bold',
   },
   timeText: {
-    color: '#81A39D',
+    color: colors.textMuted,
     fontSize: 10,
     marginTop: 4,
   },
@@ -208,7 +245,7 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   emptyText: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 13,
     marginTop: 8,
   },

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import API from '../services/api';
+import { colors } from '../theme';
 
 // Minimal 8 karakter berupa huruf atau angka (tanpa spasi/simbol)
 const PASSWORD_REGEX = /^[A-Za-z0-9]{8,}$/;
@@ -73,7 +74,7 @@ export default function RegisterScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -92,7 +93,7 @@ export default function RegisterScreen({ navigation }) {
                 <Ionicons
                   name="alert-circle-outline"
                   size={20}
-                  color="#FF6B6B"
+                  color={colors.danger}
                   style={{ marginRight: 8 }}
                 />
                 <Text style={styles.errorText}>{errorMessage}</Text>
@@ -102,11 +103,11 @@ export default function RegisterScreen({ navigation }) {
             {/* Input Nama */}
             <Text style={styles.label}>Nama Lengkap</Text>
             <View style={[styles.inputContainer, errorMessage && !nama.trim() ? styles.inputError : null]}>
-              <Ionicons name="person-outline" size={18} color="#81A39D" style={{ marginRight: 10 }} />
+              <Ionicons name="person-outline" size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
               <TextInput
                 style={styles.input}
                 placeholder="Rina Wijaya"
-                placeholderTextColor="#81A39D"
+                placeholderTextColor={colors.textMuted}
                 value={nama}
                 onChangeText={handleFieldChange(setNama)}
               />
@@ -115,11 +116,11 @@ export default function RegisterScreen({ navigation }) {
             {/* Input Email */}
             <Text style={styles.label}>Email</Text>
             <View style={[styles.inputContainer, errorMessage && !email.trim() ? styles.inputError : null]}>
-              <Ionicons name="mail-outline" size={18} color="#81A39D" style={{ marginRight: 10 }} />
+              <Ionicons name="mail-outline" size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
               <TextInput
                 style={styles.input}
                 placeholder="rina@email.com"
-                placeholderTextColor="#81A39D"
+                placeholderTextColor={colors.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -140,13 +141,13 @@ export default function RegisterScreen({ navigation }) {
               <Ionicons
                 name="lock-closed-outline"
                 size={18}
-                color="#81A39D"
+                color={colors.textMuted}
                 style={{ marginRight: 10 }}
               />
               <TextInput
                 style={styles.input}
                 placeholder="Minimal 8 huruf atau angka"
-                placeholderTextColor="#81A39D"
+                placeholderTextColor={colors.textMuted}
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={handleFieldChange(setPassword)}
@@ -158,7 +159,7 @@ export default function RegisterScreen({ navigation }) {
                 <Ionicons
                   name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                   size={18}
-                  color="#81A39D"
+                  color={colors.textMuted}
                 />
               </TouchableOpacity>
             </View>
@@ -180,7 +181,7 @@ export default function RegisterScreen({ navigation }) {
               activeOpacity={0.85}
             >
               {loading ? (
-                <ActivityIndicator color="#0D3B36" />
+                <ActivityIndicator color={colors.surface} />
               ) : (
                 <Text style={styles.buttonPrimaryText}>Daftar</Text>
               )}
@@ -202,7 +203,7 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
+    backgroundColor: colors.background,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   content: {
@@ -214,12 +215,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 12,
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 6,
     marginBottom: 24,
@@ -230,21 +231,21 @@ const styles = StyleSheet.create({
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 107, 107, 0.15)',
+    backgroundColor: 'colors.dangerSoft',
     borderWidth: 1,
-    borderColor: '#FF6B6B',
+    borderColor: colors.danger,
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
   },
   errorText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 12,
     flex: 1,
     lineHeight: 16,
   },
   label: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
     marginBottom: 6,
     fontWeight: '500',
@@ -252,37 +253,37 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 25,
     paddingHorizontal: 16,
     paddingVertical: 4,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#245D56',
+    borderColor: colors.surfaceAlt,
   },
   inputError: {
-    borderColor: '#FF6B6B',
+    borderColor: colors.danger,
   },
   input: {
     flex: 1,
     height: 44,
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 14,
   },
   passwordHint: {
-    color: '#81A39D',
+    color: colors.textMuted,
     fontSize: 11,
     marginLeft: 8,
     marginBottom: 16,
   },
   hintValid: {
-    color: '#4ADE80',
+    color: colors.secondary,
   },
   hintInvalid: {
-    color: '#FF6B6B',
+    color: colors.danger,
   },
   buttonPrimary: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.primary,
     borderRadius: 25,
     paddingVertical: 14,
     alignItems: 'center',
@@ -290,7 +291,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   buttonPrimaryText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
     fontSize: 15,
   },
@@ -299,11 +300,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   footerText: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 13,
   },
   linkText: {
-    color: '#E6A153',
+    color: colors.primary,
     fontWeight: 'bold',
     fontSize: 13,
   },

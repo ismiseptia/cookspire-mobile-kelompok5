@@ -72,7 +72,9 @@ exports.login = async (req, res) => {
       user: {
         id_user: user.id_user,
         nama: user.nama,
-        email: user.email
+        email: user.email,
+        foto: user.foto || null,
+        bio: user.bio || ''
       }
     });
   } catch (error) {

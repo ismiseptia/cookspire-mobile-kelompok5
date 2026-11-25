@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../services/api';
+import { colors } from '../theme';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -56,8 +57,12 @@ export default function LoginScreen({ navigation }) {
         password,
       });
 
-      if (res.data?.success || res.data?.token) {
-        const token = res.data.token || 'dummy_token';
+      if (res.data?.token) {
+        const token = res.data.token;
+        if (!token) {
+          Alert.alert('Gagal Masuk', 'Server tidak mengirim token login. Coba lagi.');
+          return;
+        }
         const userData = buildUserSession(res.data, trimmedEmail);
 
         await AsyncStorage.multiSet([
@@ -81,7 +86,7 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -104,13 +109,13 @@ export default function LoginScreen({ navigation }) {
             {/* Form Email */}
             <Text style={styles.label}>Email</Text>
             <View style={styles.inputBox}>
-              <Ionicons name="mail-outline" size={18} color="#81A39D" style={styles.inputIcon} />
+              <Ionicons name="mail-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.textInput}
                 value={email}
                 onChangeText={setEmail}
                 placeholder="nama@email.com"
-                placeholderTextColor="#81A39D"
+                placeholderTextColor={colors.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -123,7 +128,7 @@ export default function LoginScreen({ navigation }) {
               <Ionicons
                 name="lock-closed-outline"
                 size={18}
-                color="#81A39D"
+                color={colors.textMuted}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -131,7 +136,7 @@ export default function LoginScreen({ navigation }) {
                 value={password}
                 onChangeText={setPassword}
                 placeholder="••••••"
-                placeholderTextColor="#81A39D"
+                placeholderTextColor={colors.textMuted}
                 secureTextEntry={!showPassword}
               />
               <TouchableOpacity
@@ -141,7 +146,7 @@ export default function LoginScreen({ navigation }) {
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={18}
-                  color="#81A39D"
+                  color={colors.textMuted}
                 />
               </TouchableOpacity>
             </View>
@@ -163,7 +168,7 @@ export default function LoginScreen({ navigation }) {
               activeOpacity={0.85}
             >
               {loading ? (
-                <ActivityIndicator color="#0D3B36" />
+                <ActivityIndicator color={colors.surface} />
               ) : (
                 <Text style={styles.primaryBtnText}>Masuk</Text>
               )}
@@ -193,7 +198,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
+    backgroundColor: colors.background,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   scrollContent: {
@@ -208,7 +213,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
@@ -218,20 +223,20 @@ const styles = StyleSheet.create({
     fontSize: 32,
   },
   title: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 22,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 6,
   },
   subtitle: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 12,
     textAlign: 'center',
     marginBottom: 28,
   },
   label: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 8,
@@ -239,12 +244,12 @@ const styles = StyleSheet.create({
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#245D56',
+    borderColor: colors.surfaceAlt,
     marginBottom: 10,
   },
   inputIcon: {
@@ -252,7 +257,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 14,
   },
   forgotBtn: {
@@ -262,12 +267,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   forgotText: {
-    color: '#E6A153',
+    color: colors.primary,
     fontSize: 12,
     fontWeight: 'bold',
   },
   primaryBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.primary,
     borderRadius: 25,
     paddingVertical: 14,
     alignItems: 'center',
@@ -277,21 +282,21 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   primaryBtnText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontSize: 14,
     fontWeight: 'bold',
   },
   googleBtn: {
-    backgroundColor: 'transparent',
+    backgroundColor: colors.surface,
     borderRadius: 25,
     paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#245D56',
+    borderColor: colors.border,
     marginBottom: 28,
   },
   googleBtnText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -299,11 +304,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   registerText: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 12,
   },
   registerHighlight: {
-    color: '#E6A153',
+    color: colors.primary,
     fontWeight: 'bold',
   },
 });

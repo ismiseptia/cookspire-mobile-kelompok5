@@ -17,7 +17,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
-import API from '../services/api';
+import API, { resolveImageUrl, uploadImageAsset } from '../services/api';
+import { colors } from '../theme';
 
 const DEFAULT_BIO = 'Suka masak rumahan dan berbagi resep sederhana.';
 
@@ -27,6 +28,7 @@ export default function EditProfileScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [bio, setBio] = useState(DEFAULT_BIO);
   const [foto, setFoto] = useState(null);
+  const [fotoBase64, setFotoBase64] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,6 +55,19 @@ export default function EditProfileScreen({ navigation }) {
         if (parsed.bio !== undefined && parsed.bio !== null) {
           setBio(parsed.bio);
         }
+
+        if (resolvedId) {
+          const res = await API.get(`/auth/user/profile/${resolvedId}`).catch(() => null);
+          if (res?.data?.user) {
+            const dbUser = res.data.user;
+            setNama(dbUser.nama || parsed.nama || '');
+            setEmail(dbUser.email || parsed.email || '');
+            setFoto(dbUser.foto || parsed.foto || null);
+            if (dbUser.bio !== undefined && dbUser.bio !== null) {
+              setBio(dbUser.bio);
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Gagal memuat data user:', error.message);
@@ -76,11 +91,13 @@ export default function EditProfileScreen({ navigation }) {
         mediaTypes: ImagePicker.MediaTypeOptions?.Images || ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.7,
+        quality: 0.6,
+        base64: true,
       });
 
       if (!result.canceled && result.assets?.length > 0) {
         setFoto(result.assets[0].uri);
+        setFotoBase64(result.assets[0].base64 || null);
       }
     } catch (error) {
       console.error('Error Pick Photo:', error.message);
@@ -104,9 +121,16 @@ export default function EditProfileScreen({ navigation }) {
 
     try {
       setSubmitting(true);
+
+      let uploadedFotoUrl = foto;
+      if (fotoBase64) {
+        uploadedFotoUrl = await uploadImageAsset(foto, fotoBase64, 'avatar');
+      }
+
       const response = await API.put(`/auth/user/profile/${userId}`, {
         nama: trimmedNama,
         bio: trimmedBio,
+        foto: uploadedFotoUrl || null,
       });
 
       if (response.data?.success) {
@@ -120,7 +144,7 @@ export default function EditProfileScreen({ navigation }) {
           id: userId,
           nama: trimmedNama,
           bio: trimmedBio,
-          foto: foto || null,
+          foto: response.data.user?.foto ?? uploadedFotoUrl ?? null,
         };
 
         await AsyncStorage.setItem('userData', JSON.stringify(updatedData));
@@ -141,23 +165,24 @@ export default function EditProfileScreen({ navigation }) {
   };
 
   const initialLetter = nama.trim() ? nama.trim().charAt(0).toUpperCase() : 'U';
+  const displayAvatarUri = resolveImageUrl(foto);
 
   if (loading) {
     return (
       <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#E6A153" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profil</Text>
         <View style={{ width: 36 }} />
@@ -179,8 +204,8 @@ export default function EditProfileScreen({ navigation }) {
               onPress={handlePickPhoto}
               activeOpacity={0.8}
             >
-              {foto ? (
-                <Image source={{ uri: foto }} style={styles.avatarImage} />
+              {displayAvatarUri ? (
+                <Image source={{ uri: displayAvatarUri }} style={styles.avatarImage} />
               ) : (
                 <Text style={styles.avatarText}>{initialLetter}</Text>
               )}
@@ -192,7 +217,7 @@ export default function EditProfileScreen({ navigation }) {
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
             >
-              <Ionicons name="camera-outline" size={16} color="#E6A153" style={{ marginRight: 6 }} />
+              <Ionicons name="camera-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
               <Text style={styles.changePhotoText}>Ubah Foto</Text>
             </TouchableOpacity>
           </View>
@@ -200,25 +225,25 @@ export default function EditProfileScreen({ navigation }) {
           {/* Form Inputs */}
           <Text style={styles.label}>Nama lengkap</Text>
           <View style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={18} color="#81A39D" style={styles.inputIcon} />
+            <Ionicons name="person-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.textInput}
               value={nama}
               onChangeText={setNama}
               placeholder="Masukkan nama lengkap"
-              placeholderTextColor="#81A39D"
+              placeholderTextColor={colors.textMuted}
             />
           </View>
 
           <Text style={styles.label}>Email - hanya baca</Text>
           <View style={[styles.inputContainer, styles.readOnlyInput]}>
-            <Ionicons name="mail-outline" size={18} color="#81A39D" style={styles.inputIcon} />
+            <Ionicons name="mail-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
             <TextInput
-              style={[styles.textInput, { color: '#81A39D' }]}
+              style={[styles.textInput, { color: colors.textMuted }]}
               value={email}
               editable={false}
             />
-            <Ionicons name="lock-closed" size={16} color="#81A39D" />
+            <Ionicons name="lock-closed" size={16} color={colors.textMuted} />
           </View>
 
           <TouchableOpacity
@@ -235,7 +260,7 @@ export default function EditProfileScreen({ navigation }) {
               value={bio}
               onChangeText={setBio}
               placeholder="Tuliskan bio singkat tentang dirimu..."
-              placeholderTextColor="#81A39D"
+              placeholderTextColor={colors.textMuted}
               multiline
               numberOfLines={3}
               textAlignVertical="top"
@@ -251,7 +276,7 @@ export default function EditProfileScreen({ navigation }) {
             activeOpacity={0.85}
           >
             {submitting ? (
-              <ActivityIndicator color="#0D3B36" />
+              <ActivityIndicator color={colors.surface} />
             ) : (
               <Text style={styles.primaryButtonText}>Simpan Perubahan</Text>
             )}
@@ -269,8 +294,8 @@ export default function EditProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 12,
+    backgroundColor: colors.background,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 12 : 12,
   },
   center: {
     justifyContent: 'center',
@@ -287,12 +312,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -308,7 +333,7 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -319,7 +344,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   avatarText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontSize: 36,
     fontWeight: 'bold',
   },
@@ -330,12 +355,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   changePhotoText: {
-    color: '#E6A153',
+    color: colors.primary,
     fontSize: 13,
     fontWeight: '600',
   },
   label: {
-    color: '#B2D0CA',
+    color: colors.text,
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 6,
@@ -344,7 +369,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -357,7 +382,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
   },
   linkButton: {
@@ -365,35 +390,35 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   linkText: {
-    color: '#E6A153',
+    color: colors.primary,
     fontSize: 12,
     fontWeight: '500',
   },
   multilineContainer: {
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 14,
     minHeight: 80,
   },
   multilineInput: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
   },
   helperText: {
-    color: '#81A39D',
+    color: colors.textSecondary,
     fontSize: 11,
     marginTop: 4,
     marginBottom: 24,
   },
   primaryButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.primary,
     borderRadius: 25,
     paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 12,
   },
   primaryButtonText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
     fontSize: 14,
   },
@@ -402,7 +427,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButtonText: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 13,
   },
 });
