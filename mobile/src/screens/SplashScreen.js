@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, View, StatusBar, SafeAreaView } from 'react-native';
+import { colors } from '../theme';
 
 export default function SplashScreen({ navigation }) {
   useEffect(() => {
@@ -12,7 +13,7 @@ export default function SplashScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.content}>
         <View style={styles.logoCircle}>
           <Text style={{ fontSize: 40 }}>🍲</Text>
@@ -27,7 +28,7 @@ export default function SplashScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -39,7 +40,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -47,11 +48,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   subtitle: {
     fontSize: 13,
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     marginTop: 8,
     textAlign: 'center',
   },

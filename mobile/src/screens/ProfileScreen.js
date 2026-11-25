@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import API from '../services/api';
+import API, { resolveImageUrl } from '../services/api';
+import { colors } from '../theme';
 
 export default function ProfileScreen({ navigation }) {
   const [user, setUser] = useState({ nama: '', email: '', bio: '', foto: null, id_user: null });
@@ -42,12 +43,22 @@ export default function ProfileScreen({ navigation }) {
 
       if (!userId) return;
 
-      const res = await API.get(`/recipes/user/${userId}`);
-      if (res.data?.stats) {
+      const [recipesRes, profileRes] = await Promise.all([
+        API.get(`/recipes/user/${userId}`),
+        API.get(`/auth/user/profile/${userId}`).catch(() => null),
+      ]);
+
+      if (profileRes?.data?.user) {
+        const syncedUser = { ...parsedUser, ...profileRes.data.user };
+        setUser(syncedUser);
+        await AsyncStorage.setItem('userData', JSON.stringify(syncedUser));
+      }
+
+      if (recipesRes.data?.stats) {
         setStats({
-          total_resep: res.data.stats.total_resep || 0,
-          total_favorit: res.data.stats.total_ulasan || 0,
-          avg_rating: res.data.stats.avg_rating || '0.0',
+          total_resep: recipesRes.data.stats.total_resep || 0,
+          total_favorit: recipesRes.data.stats.total_ulasan || 0,
+          avg_rating: recipesRes.data.stats.avg_rating || '0.0',
         });
       }
     } catch (error) {
@@ -70,11 +81,11 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const initialLetter = user.nama?.trim() ? user.nama.trim().charAt(0).toUpperCase() : 'U';
-  const avatarUri = user.foto || user.avatar || null;
+  const avatarUri = resolveImageUrl(user.foto || user.avatar || null);
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Title Header */}
       <View style={styles.header}>
@@ -103,7 +114,7 @@ export default function ProfileScreen({ navigation }) {
             activeOpacity={0.8}
             onPress={() => navigation.navigate('EditProfile')}
           >
-            <Ionicons name="create-outline" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Ionicons name="create-outline" size={14} color={colors.text} style={{ marginRight: 6 }} />
             <Text style={styles.editProfileText}>EDIT PROFIL</Text>
           </TouchableOpacity>
         </View>
@@ -134,10 +145,10 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('MyRecipes')}
           >
             <View style={styles.menuLeft}>
-              <Ionicons name="book-outline" size={20} color="#E6A153" style={styles.menuIcon} />
+              <Ionicons name="book-outline" size={20} color={colors.primary} style={styles.menuIcon} />
               <Text style={styles.menuText}>Resep Saya</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#81A39D" />
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
 
           <View style={styles.divider} />
@@ -149,10 +160,25 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('Favorit')}
           >
             <View style={styles.menuLeft}>
-              <Ionicons name="heart-outline" size={20} color="#E6A153" style={styles.menuIcon} />
+              <Ionicons name="heart-outline" size={20} color={colors.primary} style={styles.menuIcon} />
               <Text style={styles.menuText}>Resep Favorit</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#81A39D" />
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          {/* 2b. Sampah (pulihkan resep terhapus) */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Trash')}
+          >
+            <View style={styles.menuLeft}>
+              <Ionicons name="trash-bin-outline" size={20} color={colors.primary} style={styles.menuIcon} />
+              <Text style={styles.menuText}>Sampah Resep</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
 
           <View style={styles.divider} />
@@ -167,12 +193,12 @@ export default function ProfileScreen({ navigation }) {
               <Ionicons
                 name="notifications-outline"
                 size={20}
-                color="#E6A153"
+                color={colors.primary}
                 style={styles.menuIcon}
               />
               <Text style={styles.menuText}>Notifikasi</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#81A39D" />
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
 
           <View style={styles.divider} />
@@ -184,16 +210,16 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('AccountSettings')}
           >
             <View style={styles.menuLeft}>
-              <Ionicons name="settings-outline" size={20} color="#E6A153" style={styles.menuIcon} />
+              <Ionicons name="settings-outline" size={20} color={colors.primary} style={styles.menuIcon} />
               <Text style={styles.menuText}>Pengaturan Akun</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#81A39D" />
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
         {/* Tombol Keluar dari Akun */}
         <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.8} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#FF6B6B" style={{ marginRight: 10 }} />
+          <Ionicons name="log-out-outline" size={20} color={colors.danger} style={{ marginRight: 10 }} />
           <Text style={styles.logoutText}>Keluar dari Akun</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -204,15 +230,15 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 12,
+    backgroundColor: colors.background,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 12 : 12,
   },
   header: {
     paddingHorizontal: 20,
     paddingBottom: 14,
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 22,
     fontWeight: 'bold',
   },
@@ -221,7 +247,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   userCard: {
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 20,
     alignItems: 'center',
@@ -231,7 +257,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -242,23 +268,23 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   avatarText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontSize: 32,
     fontWeight: 'bold',
   },
   userName: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 2,
   },
   userEmail: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 12,
     marginBottom: 14,
   },
   userBio: {
-    color: '#81A39D',
+    color: colors.textMuted,
     fontSize: 12,
     textAlign: 'center',
     marginBottom: 14,
@@ -267,22 +293,22 @@ const styles = StyleSheet.create({
   editProfileBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#245D56',
+    backgroundColor: colors.background,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: colors.border,
   },
   editProfileText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 11,
     fontWeight: 'bold',
     letterSpacing: 0.5,
   },
   statsCard: {
     flexDirection: 'row',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     paddingVertical: 14,
     marginBottom: 20,
@@ -294,27 +320,27 @@ const styles = StyleSheet.create({
   statBorder: {
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: '#245D56',
+    borderColor: colors.surfaceAlt,
   },
   statNumber: {
-    color: '#E6A153',
+    color: colors.primary,
     fontSize: 18,
     fontWeight: 'bold',
   },
   statLabel: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 11,
     marginTop: 2,
   },
   menuGroupHeader: {
-    color: '#81A39D',
+    color: colors.secondary,
     fontSize: 11,
     fontWeight: 'bold',
     marginBottom: 8,
     letterSpacing: 0.5,
   },
   menuContainer: {
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     paddingHorizontal: 16,
     marginBottom: 16,
@@ -333,26 +359,26 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   menuText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
     fontWeight: '600',
   },
   divider: {
     height: 1,
-    backgroundColor: '#245D56',
+    backgroundColor: colors.surfaceAlt,
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,107,107,0.2)',
+    borderColor: 'colors.danger',
   },
   logoutText: {
-    color: '#FF6B6B',
+    color: colors.danger,
     fontSize: 13,
     fontWeight: 'bold',
   },

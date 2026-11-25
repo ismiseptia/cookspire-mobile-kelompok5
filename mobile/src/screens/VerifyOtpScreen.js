@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import API from '../services/api';
+import { colors } from '../theme';
 
 export default function VerifyOtpScreen({ route, navigation }) {
   const { email, otpDev } = route.params;
@@ -52,12 +53,12 @@ export default function VerifyOtpScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerBackText}>Kembali ke Lupa Password</Text>
         <View style={styles.stepBadge}>
@@ -67,16 +68,16 @@ export default function VerifyOtpScreen({ route, navigation }) {
 
       <View style={styles.content}>
         <View style={styles.iconCircle}>
-          <Ionicons name="mail-unread-outline" size={24} color="#E6A153" />
+          <Ionicons name="mail-unread-outline" size={24} color={colors.primary} />
         </View>
 
         <Text style={styles.title}>Verifikasi kode</Text>
         <Text style={styles.subtitle}>
-          Masukkan kode 6 digit yang dikirim ke <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>{email}</Text>
+          Masukkan kode 6 digit yang dikirim ke <Text style={{ color: colors.text, fontWeight: 'bold' }}>{email}</Text>
         </Text>
 
         {otpDev && (
-          <Text style={{ color: '#E6A153', fontSize: 12, marginBottom: 16 }}>
+          <Text style={{ color: colors.primary, fontSize: 12, marginBottom: 16 }}>
             [DEV MODE] Kode OTP kamu: {otpDev}
           </Text>
         )}
@@ -98,7 +99,7 @@ export default function VerifyOtpScreen({ route, navigation }) {
 
         <TouchableOpacity style={styles.primaryBtn} onPress={handleVerify} disabled={loading}>
           {loading ? (
-            <ActivityIndicator color="#0D3B36" />
+            <ActivityIndicator color={colors.surface} />
           ) : (
             <Text style={styles.primaryBtnText}>Verifikasi</Text>
           )}
@@ -111,7 +112,7 @@ export default function VerifyOtpScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
+    backgroundColor: colors.background,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 12,
   },
   header: {
@@ -124,24 +125,24 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
   },
   headerBackText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
     flex: 1,
   },
   stepBadge: {
-    backgroundColor: '#184943',
+    backgroundColor: colors.secondarySoft,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   stepBadgeText: {
-    color: '#E6A153',
+    color: colors.secondary,
     fontSize: 10,
     fontWeight: 'bold',
   },
@@ -153,19 +154,19 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
   title: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   subtitle: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 18,
     marginBottom: 24,
@@ -179,26 +180,26 @@ const styles = StyleSheet.create({
     width: 46,
     height: 52,
     borderRadius: 12,
-    backgroundColor: '#184943',
-    color: '#FFFFFF',
+    backgroundColor: colors.surface,
+    color: colors.text,
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
     borderWidth: 1,
-    borderColor: '#245D56',
+    borderColor: colors.surfaceAlt,
   },
   otpBoxFilled: {
-    borderColor: '#E6A153',
-    backgroundColor: '#245D56',
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
   },
   primaryBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.primary,
     borderRadius: 25,
     paddingVertical: 14,
     alignItems: 'center',
   },
   primaryBtnText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontSize: 14,
     fontWeight: 'bold',
   },

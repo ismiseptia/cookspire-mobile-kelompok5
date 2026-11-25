@@ -7,6 +7,7 @@ import {
   StatusBar,
   SafeAreaView,
 } from 'react-native';
+import { colors } from '../theme';
 
 const slides = [
   {
@@ -46,7 +47,7 @@ export default function OnboardingScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       <View style={styles.content}>
         
@@ -92,7 +93,7 @@ export default function OnboardingScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -104,23 +105,23 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 40,
     borderWidth: 2,
-    borderColor: '#E6A153',
+    borderColor: colors.primary,
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 12,
   },
   desc: {
     fontSize: 13,
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 30,
@@ -136,21 +137,21 @@ const styles = StyleSheet.create({
   },
   activeDot: {
     width: 24,
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
   },
   inactiveDot: {
     width: 8,
-    backgroundColor: '#245D56',
+    backgroundColor: colors.border,
   },
   button: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.primary,
     borderRadius: 25,
     paddingVertical: 14,
     alignItems: 'center',
   },
   buttonText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
     fontSize: 15,
   },
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   skipText: {
-    color: '#E6A153',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },

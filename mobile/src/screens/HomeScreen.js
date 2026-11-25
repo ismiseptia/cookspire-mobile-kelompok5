@@ -10,82 +10,119 @@ import {
   Platform,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import API from '../services/api';
+import API, { resolveImageUrl } from '../services/api';
+import RecipeThumbnail from '../components/RecipeThumbnail';
+import { colors } from '../theme';
 
-const CATEGORIES = ['Semua', 'Makanan Utama', 'Minuman', 'Camilan', "Dessert", "Sayuran"];
+const CATEGORIES = ['Semua', 'Makanan Utama', 'Minuman', 'Camilan', 'Dessert', 'Sayuran'];
+
+const getHighestRatedRecipe = (recipeList = []) => {
+  if (!Array.isArray(recipeList) || recipeList.length === 0) return null;
+
+  return [...recipeList].sort((a, b) => {
+    const ratingDiff = Number(b.rating || 0) - Number(a.rating || 0);
+    if (ratingDiff !== 0) return ratingDiff;
+    return Number(b.reviews_count || 0) - Number(a.reviews_count || 0);
+  })[0];
+};
 
 export default function HomeScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState('Semua');
   const [userName, setUserName] = useState('Pengguna');
+  const [userPhoto, setUserPhoto] = useState(null);
+  const [avatarError, setAvatarError] = useState(false);
   const [recipes, setRecipes] = useState([]);
   const [featuredRecipe, setFeaturedRecipe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Memuat Data Profil User dari AsyncStorage
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     try {
       const storedUser = await AsyncStorage.getItem('userData');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        const name = user.nama || user.name;
-        if (name) setUserName(name);
+      if (!storedUser) return;
+
+      const user = JSON.parse(storedUser);
+      const name = user.nama || user.name;
+      if (name) setUserName(name);
+      setUserPhoto(user.foto || user.avatar || null);
+
+      const userId =
+        user.id_user ??
+        user.id ??
+        user.user?.id_user ??
+        user.user?.id ??
+        null;
+
+      if (userId) {
+        const res = await API.get(`/auth/user/profile/${userId}`).catch(() => null);
+        if (res?.data?.user) {
+          const syncedUser = { ...user, ...res.data.user };
+          if (syncedUser.nama) setUserName(syncedUser.nama);
+          setUserPhoto(syncedUser.foto || null);
+          await AsyncStorage.setItem('userData', JSON.stringify(syncedUser));
+        }
       }
     } catch (error) {
       console.error('Gagal memuat profil pengguna:', error.message);
     }
-  };
+  }, []);
 
-  // Memuat Data Resep dari Backend API
-  const fetchRecipes = async (showLoader = true) => {
-    if (showLoader) setLoading(true);
-    try {
-      const params = selectedCategory !== 'Semua' ? { category: selectedCategory } : {};
-      const response = await API.get('/recipes', { params });
+  const fetchRecipes = useCallback(
+    async (showLoader = true) => {
+      if (showLoader) setLoading(true);
+      try {
+        const params = selectedCategory !== 'Semua' ? { category: selectedCategory } : {};
+        const response = await API.get('/recipes', { params });
 
-      const data = response.data || [];
-      setRecipes(data);
-      setFeaturedRecipe(data.length > 0 ? data[0] : null);
-    } catch (error) {
-      console.error('Gagal memuat resep:', error.response?.data?.message || error.message);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+        const data = Array.isArray(response.data) ? response.data : [];
+        setRecipes(data);
+        setFeaturedRecipe(getHighestRatedRecipe(data));
+      } catch (error) {
+        console.error('Gagal memuat resep:', error.response?.data?.message || error.message);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [selectedCategory]
+  );
 
   useEffect(() => {
     loadUserData();
-  }, []);
+  }, [loadUserData]);
 
   useEffect(() => {
     fetchRecipes(true);
-  }, [selectedCategory]);
+  }, [fetchRecipes]);
 
-  // Listener untuk memperbarui data otomatis saat layar dipfokuskan kembali
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadUserData();
       fetchRecipes(false);
     });
     return unsubscribe;
-  }, [navigation, selectedCategory]);
+  }, [navigation, loadUserData, fetchRecipes]);
 
-  // Handler Pull-to-Refresh
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadUserData();
     fetchRecipes(false);
-  }, [selectedCategory]);
+  }, [loadUserData, fetchRecipes]);
 
-  const initialLetter = userName ? userName.charAt(0).toUpperCase() : 'U';
+  const initialLetter = userName.trim() ? userName.trim().charAt(0).toUpperCase() : 'U';
+  const resolvedUserPhoto = resolveImageUrl(userPhoto);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [resolvedUserPhoto]);
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -94,8 +131,8 @@ export default function HomeScreen({ navigation }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#E6A153"
-            colors={['#E6A153']}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
       >
@@ -107,7 +144,15 @@ export default function HomeScreen({ navigation }) {
             onPress={() => navigation.navigate('Profil')}
           >
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initialLetter}</Text>
+              {resolvedUserPhoto && !avatarError ? (
+                <Image
+                  source={{ uri: resolvedUserPhoto }}
+                  style={styles.fullImage}
+                  onError={() => setAvatarError(true)}
+                />
+              ) : (
+                <Text style={styles.avatarText}>{initialLetter}</Text>
+              )}
             </View>
             <View>
               <Text style={styles.greetingTitle}>Halo, {userName}</Text>
@@ -115,14 +160,13 @@ export default function HomeScreen({ navigation }) {
             </View>
           </TouchableOpacity>
 
-          {/* Tombol Lonceng Notifikasi */}
           <TouchableOpacity
             style={styles.notifButton}
             activeOpacity={0.7}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             onPress={() => navigation.navigate('Notifications')}
           >
-            <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
+            <Ionicons name="notifications-outline" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -132,10 +176,10 @@ export default function HomeScreen({ navigation }) {
           activeOpacity={0.8}
           onPress={() => navigation.navigate('Cari')}
         >
-          <Ionicons name="search-outline" size={18} color="#81A39D" style={{ marginRight: 10 }} />
+          <Ionicons name="search-outline" size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
           <Text style={styles.searchPlaceholder}>Cari resep, kategori, bahan...</Text>
           <View style={styles.filterBadge}>
-            <Ionicons name="options-outline" size={16} color="#0D3B36" />
+            <Ionicons name="options-outline" size={16} color={colors.surface} />
           </View>
         </TouchableOpacity>
 
@@ -156,11 +200,12 @@ export default function HomeScreen({ navigation }) {
                   {featuredRecipe.title}
                 </Text>
                 <View style={styles.ratingRow}>
-                  <Ionicons name="star" size={14} color="#E6A153" />
+                  <Ionicons name="star" size={14} color={colors.primary} />
                   <Text style={styles.ratingText}>
-                    {featuredRecipe.rating || '0.0'}{' '}
+                    {Number(featuredRecipe.rating || 0).toFixed(1)}{' '}
                     <Text style={styles.ratingCount}>
-                      ({featuredRecipe.reviews_count || 0} ulasan)
+                      ({featuredRecipe.reviews_count || 0}) • {featuredRecipe.time_minutes || 30}m •{' '}
+                      {featuredRecipe.level || 'Mudah'}
                     </Text>
                   </Text>
                 </View>
@@ -169,7 +214,7 @@ export default function HomeScreen({ navigation }) {
                 </View>
               </View>
               <View style={styles.featuredImageCircle}>
-                <Text style={{ fontSize: 38 }}>{featuredRecipe.icon || '🍲'}</Text>
+                <RecipeThumbnail uri={featuredRecipe.icon} emojiSize={38} />
               </View>
             </TouchableOpacity>
           </View>
@@ -177,9 +222,9 @@ export default function HomeScreen({ navigation }) {
 
         {/* Horizontal Category Filter */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-          {CATEGORIES.map((cat, idx) => (
+          {CATEGORIES.map((cat) => (
             <TouchableOpacity
-              key={idx}
+              key={cat}
               style={[
                 styles.categoryChip,
                 selectedCategory === cat ? styles.categoryChipActive : null,
@@ -208,7 +253,7 @@ export default function HomeScreen({ navigation }) {
 
         {/* Resep Grid List */}
         {loading ? (
-          <ActivityIndicator size="large" color="#E6A153" style={{ marginVertical: 35 }} />
+          <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 35 }} />
         ) : recipes.length === 0 ? (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyText}>Belum ada resep untuk kategori ini.</Text>
@@ -223,15 +268,16 @@ export default function HomeScreen({ navigation }) {
                 onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id })}
               >
                 <View style={styles.cardImageCircle}>
-                  <Text style={{ fontSize: 30 }}>{item.icon || '🍲'}</Text>
+                  <RecipeThumbnail uri={item.icon} emojiSize={30} />
                 </View>
                 <Text style={styles.recipeCardTitle} numberOfLines={1}>
                   {item.title}
                 </Text>
                 <View style={styles.cardMeta}>
-                  <Ionicons name="star" size={12} color="#E6A153" />
-                  <Text style={styles.cardMetaText}>
-                    {item.rating || '0.0'} • {item.time_minutes || 30} min
+                  <Ionicons name="star" size={12} color={colors.primary} />
+                  <Text style={styles.cardMetaText} numberOfLines={1}>
+                    {Number(item.rating || 0).toFixed(1)} • {item.time_minutes || 30}m •{' '}
+                    {item.level || 'Mudah'}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -246,8 +292,8 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 12,
+    backgroundColor: colors.background,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 12 : 12,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -269,37 +315,42 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  fullImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
     fontSize: 16,
   },
   greetingTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontWeight: 'bold',
     fontSize: 16,
   },
   greetingSubtitle: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 12,
   },
   notifButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 25,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -307,11 +358,11 @@ const styles = StyleSheet.create({
   },
   searchPlaceholder: {
     flex: 1,
-    color: '#81A39D',
+    color: colors.textMuted,
     fontSize: 13,
   },
   filterBadge: {
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
     padding: 6,
     borderRadius: 12,
   },
@@ -322,13 +373,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sectionBadge: {
-    color: '#E6A153',
+    color: colors.secondary,
     fontSize: 11,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   featuredCard: {
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 16,
     flexDirection: 'row',
@@ -340,7 +391,7 @@ const styles = StyleSheet.create({
     paddingRight: 10,
   },
   featuredTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 17,
     fontWeight: 'bold',
     marginBottom: 6,
@@ -351,24 +402,24 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   ratingText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 12,
     fontWeight: 'bold',
     marginLeft: 4,
   },
   ratingCount: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontWeight: 'normal',
   },
   buttonDetail: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.primary,
     borderRadius: 15,
     paddingVertical: 8,
     paddingHorizontal: 16,
     alignSelf: 'flex-start',
   },
   buttonDetailText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -376,29 +427,30 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: '#245D56',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   categoryScroll: {
     marginBottom: 24,
   },
   categoryChip: {
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 16,
     marginRight: 10,
   },
   categoryChipActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.secondary,
   },
   categoryText: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 13,
   },
   categoryTextActive: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
   },
   popularHeader: {
@@ -408,12 +460,12 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   sectionTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     fontWeight: 'bold',
   },
   seeAllText: {
-    color: '#E6A153',
+    color: colors.primary,
     fontSize: 12,
   },
   gridContainer: {
@@ -423,7 +475,7 @@ const styles = StyleSheet.create({
   },
   recipeCard: {
     width: '48%',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 14,
     alignItems: 'center',
@@ -433,13 +485,14 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#245D56',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
+    overflow: 'hidden',
   },
   recipeCardTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
     fontWeight: 'bold',
     textAlign: 'center',
@@ -448,18 +501,21 @@ const styles = StyleSheet.create({
   cardMeta: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
   },
   cardMetaText: {
-    color: '#B2D0CA',
-    fontSize: 11,
+    color: colors.textSecondary,
+    fontSize: 10.5,
     marginLeft: 4,
+    flexShrink: 1,
   },
   emptyBox: {
     paddingVertical: 30,
     alignItems: 'center',
   },
   emptyText: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 13,
   },
 });

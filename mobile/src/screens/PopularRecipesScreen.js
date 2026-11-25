@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,30 +9,41 @@ import {
   SafeAreaView,
   Platform,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import API from '../services/api';
+import RecipeThumbnail from '../components/RecipeThumbnail';
+import AuthorAvatar from '../components/AuthorAvatar';
+import { colors } from '../theme';
 
 export default function PopularRecipesScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('Mingguan');
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchPopularRecipes();
-  }, [activeTab]);
-
-  const fetchPopularRecipes = async () => {
+  const fetchPopularRecipes = useCallback(async (showLoader = true) => {
+    if (showLoader) setLoading(true);
     try {
-      setLoading(true);
       const res = await API.get('/recipes/populer');
-      setRecipes(res.data || []);
+      setRecipes(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error('Error Fetch Popular:', error.message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchPopularRecipes(true);
+  }, [activeTab, fetchPopularRecipes]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchPopularRecipes(false);
+  }, [fetchPopularRecipes]);
 
   const renderRankCard = ({ item, index }) => (
     <TouchableOpacity
@@ -45,16 +56,25 @@ export default function PopularRecipesScreen({ navigation }) {
       </Text>
 
       <View style={styles.cardImageCircle}>
-        <Text style={{ fontSize: 30 }}>{item.icon || '🍲'}</Text>
+        <RecipeThumbnail uri={item.icon} emojiSize={30} />
       </View>
 
       <View style={styles.cardContent}>
-        <Text style={styles.recipeTitle}>{item.title}</Text>
-        <Text style={styles.authorText}>oleh {item.author || 'Chef'}</Text>
+        <Text style={styles.recipeTitle} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <View style={styles.authorRow}>
+          <AuthorAvatar uri={item.author_photo} name={item.author} size={18} />
+          <Text style={styles.authorText} numberOfLines={1}>
+            {item.author || 'Chef'}
+          </Text>
+        </View>
 
         <View style={styles.metaRow}>
-          <Ionicons name="star" size={13} color="#E6A153" />
-          <Text style={styles.metaText}>{item.rating} • {item.reviews_count} ulasan</Text>
+          <Ionicons name="star" size={13} color={colors.primary} />
+          <Text style={styles.metaText}>
+            {Number(item.rating || 0).toFixed(1)} • {item.reviews_count || 0} ulasan
+          </Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -62,17 +82,16 @@ export default function PopularRecipesScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Resep Populer</Text>
         <View style={{ width: 36 }} />
       </View>
 
-      {/* Time Filter Tabs */}
       <View style={styles.tabContainer}>
         {['Mingguan', 'Bulanan', 'Semua'].map((tab) => (
           <TouchableOpacity
@@ -88,14 +107,27 @@ export default function PopularRecipesScreen({ navigation }) {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#E6A153" style={{ marginVertical: 40 }} />
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 40 }} />
       ) : (
         <FlatList
           data={recipes}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => String(item.id)}
           renderItem={renderRankCard}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>Belum ada resep populer tersedia.</Text>
+            </View>
+          }
         />
       )}
     </SafeAreaView>
@@ -105,7 +137,7 @@ export default function PopularRecipesScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
+    backgroundColor: colors.background,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 12,
   },
   header: {
@@ -119,18 +151,18 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     fontWeight: 'bold',
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     marginHorizontal: 20,
     borderRadius: 25,
     padding: 4,
@@ -143,14 +175,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   tabBtnActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.secondary,
   },
   tabText: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 12,
   },
   tabTextActive: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
   },
   listContent: {
@@ -160,13 +192,13 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 12,
     marginBottom: 12,
   },
   rankNumber: {
-    color: '#B2D0CA',
+    color: colors.textMuted,
     fontSize: 18,
     fontWeight: 'bold',
     width: 24,
@@ -174,38 +206,53 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   topRankNumber: {
-    color: '#E6A153',
+    color: colors.primary,
     fontSize: 22,
   },
   cardImageCircle: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#245D56',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    overflow: 'hidden',
   },
   cardContent: {
     flex: 1,
   },
   recipeTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 14,
     fontWeight: 'bold',
   },
-  authorText: {
-    color: '#B2D0CA',
-    fontSize: 11,
+  authorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 4,
+  },
+  authorText: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    marginLeft: 5,
+    flexShrink: 1,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   metaText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 11,
     marginLeft: 4,
+  },
+  emptyBox: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    fontSize: 13,
   },
 });

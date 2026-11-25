@@ -16,7 +16,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import API from '../services/api';
+import API, { uploadImageAsset } from '../services/api';
+import { colors } from '../theme';
 
 const EMOJI_OPTIONS = ['🥘', '🍲', '🧆', '🥤', '🍳', '🥗', '🍞', '🍰'];
 const CATEGORY_OPTIONS = [
@@ -26,15 +27,31 @@ const CATEGORY_OPTIONS = [
   { id: 4, name: 'Camilan' },
   { id: 5, name: 'Sayuran' },
 ];
+const DIFFICULTY_OPTIONS = ['Mudah', 'Sedang', 'Sulit'];
+const TIME_PRESETS = ['15', '30', '45', '60'];
+
+const resolveUserId = (userObj) => {
+  if (!userObj) return null;
+  return (
+    userObj.id_user ??
+    userObj.id ??
+    userObj.user?.id_user ??
+    userObj.user?.id ??
+    null
+  );
+};
 
 export default function AddRecipeScreen({ navigation }) {
   const [currentStep, setCurrentStep] = useState(1); // 1: Informasi & Bahan, 2: Langkah Pembuatan
 
   // Form State
-  const [imageUri, setImageUri] = useState(null); // URI foto galeri
+  const [imageUri, setImageUri] = useState(null);
+  const [imageBase64, setImageBase64] = useState(null);
   const [selectedEmoji, setSelectedEmoji] = useState('🥘');
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState(1);
+  const [cookingTime, setCookingTime] = useState('30');
+  const [difficulty, setDifficulty] = useState('Mudah');
   const [ingredients, setIngredients] = useState([
     { name: '', jumlah: '', satuan: '' },
   ]);
@@ -54,14 +71,16 @@ export default function AddRecipeScreen({ navigation }) {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaTypeOptions?.Images || ['images'],
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.7,
+      quality: 0.6,
+      base64: true,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setImageUri(result.assets[0].uri);
+      setImageBase64(result.assets[0].base64 || null);
     }
   };
 
@@ -97,10 +116,32 @@ export default function AddRecipeScreen({ navigation }) {
     setSteps(steps.filter((_, i) => i !== index));
   };
 
+  // Validasi Step 1 sebelum lanjut
+  const handleNextStep = () => {
+    if (!title.trim()) {
+      Alert.alert('Perhatian', 'Isi nama resep terlebih dahulu.');
+      return;
+    }
+
+    const parsedTime = parseInt(cookingTime, 10);
+    if (!Number.isFinite(parsedTime) || parsedTime <= 0) {
+      Alert.alert('Perhatian', 'Masukkan waktu memasak yang valid (dalam menit).');
+      return;
+    }
+
+    setCurrentStep(2);
+  };
+
   // Submit Handler to Backend
   const handleSubmitRecipe = async () => {
     if (!title.trim()) {
       Alert.alert('Perhatian', 'Nama resep harus diisi.');
+      return;
+    }
+
+    const parsedTime = parseInt(cookingTime, 10);
+    if (!Number.isFinite(parsedTime) || parsedTime <= 0) {
+      Alert.alert('Perhatian', 'Waktu memasak harus lebih dari 0 menit.');
       return;
     }
 
@@ -119,17 +160,28 @@ export default function AddRecipeScreen({ navigation }) {
     try {
       setLoading(true);
       const storedUser = await AsyncStorage.getItem('userData');
-      const user = storedUser ? JSON.parse(storedUser) : {};
-      const userId = user.id_user || user.id || 1;
+      const user = storedUser ? JSON.parse(storedUser) : null;
+      const userId = resolveUserId(user);
 
-      // Utamakan foto galeri (imageUri), jika kosong gunakan emoji
-      const photoPayload = imageUri || selectedEmoji;
+      if (!userId) {
+        Alert.alert('Sesi Berakhir', 'Silakan login kembali sebelum mengunggah resep.');
+        return;
+      }
+
+      let photoPayload = selectedEmoji;
+      if (imageUri) {
+        photoPayload = imageBase64
+          ? await uploadImageAsset(imageUri, imageBase64, 'recipe')
+          : imageUri;
+      }
 
       const payload = {
         id_user: userId,
-        nama_resep: title,
+        nama_resep: title.trim(),
         id_kategori: categoryId,
         foto: photoPayload,
+        waktu_memasak: parsedTime,
+        tingkat_kesulitan: difficulty,
         ingredients: validIngredients,
         steps: validSteps,
       };
@@ -139,14 +191,19 @@ export default function AddRecipeScreen({ navigation }) {
       if (response.data.success || response.data.id_resep) {
         navigation.replace('AddRecipeSuccess', {
           recipeId: response.data.id_resep,
-          title,
+          title: title.trim(),
           category: CATEGORY_OPTIONS.find((c) => c.id === categoryId)?.name || 'Makanan Utama',
           icon: photoPayload,
+          time_minutes: parsedTime,
+          level: difficulty,
         });
       }
     } catch (error) {
       console.error('Error Submit Recipe:', error);
-      Alert.alert('Gagal', 'Terjadi kesalahan saat mengunggah resep.');
+      Alert.alert(
+        'Gagal',
+        error.response?.data?.message || 'Terjadi kesalahan saat mengunggah resep.'
+      );
     } finally {
       setLoading(false);
     }
@@ -154,7 +211,7 @@ export default function AddRecipeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D3B36" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header Bar */}
       <View style={styles.header}>
@@ -165,7 +222,7 @@ export default function AddRecipeScreen({ navigation }) {
             else navigation.goBack();
           }}
         >
-          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Tambah Resep</Text>
         <Text style={styles.stepIndicator}>{currentStep}/2</Text>
@@ -179,36 +236,35 @@ export default function AddRecipeScreen({ navigation }) {
             <Text style={styles.label}>Foto Resep</Text>
             <View style={styles.imagePickerBox}>
               {imageUri ? (
-                /* Pratinjau Foto Galeri */
                 <View style={styles.previewContainer}>
                   <Image source={{ uri: imageUri }} style={styles.previewImage} />
                   <TouchableOpacity
                     style={styles.removeImageBtn}
-                    onPress={() => setImageUri(null)}
+                    onPress={() => {
+                      setImageUri(null);
+                      setImageBase64(null);
+                    }}
                   >
-                    <Ionicons name="close-circle" size={26} color="#FF6B6B" />
+                    <Ionicons name="close-circle" size={26} color={colors.danger} />
                   </TouchableOpacity>
                 </View>
               ) : (
-                /* Pratinjau Emoji */
                 <View style={styles.heroCircle}>
                   <Text style={{ fontSize: 50 }}>{selectedEmoji}</Text>
                 </View>
               )}
 
-              {/* Tombol Akses Galeri */}
               <TouchableOpacity
                 style={styles.galleryButton}
                 activeOpacity={0.8}
                 onPress={handlePickImage}
               >
-                <Ionicons name="image-outline" size={18} color="#0D3B36" style={{ marginRight: 6 }} />
+                <Ionicons name="image-outline" size={18} color={colors.surface} style={{ marginRight: 6 }} />
                 <Text style={styles.galleryButtonText}>
                   {imageUri ? 'Ganti Foto Galeri' : 'Pilih Foto dari Galeri'}
                 </Text>
               </TouchableOpacity>
 
-              {/* Opsi Pilihan Emoji (*Fallback*) */}
               <Text style={styles.subLabel}>Atau Pilih Emoji Resep:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
                 {EMOJI_OPTIONS.map((emoji) => (
@@ -219,7 +275,8 @@ export default function AddRecipeScreen({ navigation }) {
                       !imageUri && selectedEmoji === emoji ? styles.emojiChipActive : null,
                     ]}
                     onPress={() => {
-                      setImageUri(null); // Reset foto galeri jika memilih emoji
+                      setImageUri(null);
+                      setImageBase64(null);
                       setSelectedEmoji(emoji);
                     }}
                   >
@@ -235,7 +292,7 @@ export default function AddRecipeScreen({ navigation }) {
               <TextInput
                 style={styles.textInput}
                 placeholder="Masukkan nama resep (misal: Nasi Goreng)"
-                placeholderTextColor="#81A39D"
+                placeholderTextColor={colors.textMuted}
                 value={title}
                 onChangeText={setTitle}
               />
@@ -265,6 +322,76 @@ export default function AddRecipeScreen({ navigation }) {
               ))}
             </ScrollView>
 
+            {/* Waktu Memasak */}
+            <Text style={styles.label}>Waktu Memasak (Menit)</Text>
+            <View style={styles.timeRow}>
+              <View style={styles.timeInputWrapper}>
+                <Ionicons name="time-outline" size={16} color={colors.primary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={styles.timeInput}
+                  placeholder="30"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="numeric"
+                  maxLength={4}
+                  value={cookingTime}
+                  onChangeText={(val) => setCookingTime(val.replace(/[^0-9]/g, ''))}
+                />
+                <Text style={styles.timeUnitText}>menit</Text>
+              </View>
+
+              <View style={styles.presetRow}>
+                {TIME_PRESETS.map((preset) => (
+                  <TouchableOpacity
+                    key={preset}
+                    style={[
+                      styles.presetChip,
+                      cookingTime === preset ? styles.presetChipActive : null,
+                    ]}
+                    onPress={() => setCookingTime(preset)}
+                  >
+                    <Text
+                      style={[
+                        styles.presetChipText,
+                        cookingTime === preset ? styles.presetChipTextActive : null,
+                      ]}
+                    >
+                      {preset}m
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Tingkat Kesulitan */}
+            <Text style={styles.label}>Tingkat Kesulitan</Text>
+            <View style={styles.difficultyRow}>
+              {DIFFICULTY_OPTIONS.map((lvl) => (
+                <TouchableOpacity
+                  key={lvl}
+                  style={[
+                    styles.difficultyOption,
+                    difficulty === lvl ? styles.difficultyOptionActive : null,
+                  ]}
+                  onPress={() => setDifficulty(lvl)}
+                >
+                  <Ionicons
+                    name="flame-outline"
+                    size={15}
+                    color={difficulty === lvl ? colors.surface : colors.textSecondary}
+                    style={{ marginRight: 5 }}
+                  />
+                  <Text
+                    style={[
+                      styles.difficultyText,
+                      difficulty === lvl ? styles.difficultyTextActive : null,
+                    ]}
+                  >
+                    {lvl}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             {/* List Bahan-Bahan */}
             <Text style={styles.label}>Bahan-bahan</Text>
             {ingredients.map((ing, idx) => (
@@ -272,14 +399,14 @@ export default function AddRecipeScreen({ navigation }) {
                 <TextInput
                   style={[styles.textInput, { flex: 2, marginRight: 6 }]}
                   placeholder="Nama Bahan"
-                  placeholderTextColor="#81A39D"
+                  placeholderTextColor={colors.textMuted}
                   value={ing.name}
                   onChangeText={(val) => handleUpdateIngredient(idx, 'name', val)}
                 />
                 <TextInput
                   style={[styles.textInput, { flex: 1, marginRight: 6 }]}
                   placeholder="Jumlah"
-                  placeholderTextColor="#81A39D"
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="numeric"
                   value={ing.jumlah}
                   onChangeText={(val) => handleUpdateIngredient(idx, 'jumlah', val)}
@@ -287,31 +414,25 @@ export default function AddRecipeScreen({ navigation }) {
                 <TextInput
                   style={[styles.textInput, { flex: 1, marginRight: 6 }]}
                   placeholder="Satuan"
-                  placeholderTextColor="#81A39D"
+                  placeholderTextColor={colors.textMuted}
                   value={ing.satuan}
                   onChangeText={(val) => handleUpdateIngredient(idx, 'satuan', val)}
                 />
                 {ingredients.length > 1 && (
                   <TouchableOpacity onPress={() => handleRemoveIngredient(idx)}>
-                    <Ionicons name="close-circle" size={22} color="#FF6B6B" />
+                    <Ionicons name="close-circle" size={22} color={colors.danger} />
                   </TouchableOpacity>
                 )}
               </View>
             ))}
 
             <TouchableOpacity style={styles.addBtnOutline} onPress={handleAddIngredient}>
-              <Ionicons name="add" size={18} color="#E6A153" style={{ marginRight: 6 }} />
+              <Ionicons name="add" size={18} color={colors.primary} style={{ marginRight: 6 }} />
               <Text style={styles.addBtnOutlineText}>Tambah Bahan</Text>
             </TouchableOpacity>
 
             {/* Navigation Button */}
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => {
-                if (!title.trim()) Alert.alert('Perhatian', 'Isi nama resep terlebih dahulu.');
-                else setCurrentStep(2);
-              }}
-            >
+            <TouchableOpacity style={styles.primaryButton} onPress={handleNextStep}>
               <Text style={styles.primaryButtonText}>Lanjut ke Langkah</Text>
             </TouchableOpacity>
           </>
@@ -328,7 +449,7 @@ export default function AddRecipeScreen({ navigation }) {
                 <TextInput
                   style={styles.stepTextInput}
                   placeholder={`Tulis langkah ke-${idx + 1}...`}
-                  placeholderTextColor="#81A39D"
+                  placeholderTextColor={colors.textMuted}
                   multiline
                   value={stepText}
                   onChangeText={(val) => handleUpdateStep(idx, val)}
@@ -338,25 +459,25 @@ export default function AddRecipeScreen({ navigation }) {
                     style={{ alignSelf: 'flex-start', marginLeft: 6 }}
                     onPress={() => handleRemoveStep(idx)}
                   >
-                    <Ionicons name="close" size={20} color="#81A39D" />
+                    <Ionicons name="close" size={20} color={colors.textMuted} />
                   </TouchableOpacity>
                 )}
               </View>
             ))}
 
             <TouchableOpacity style={styles.addBtnOutline} onPress={handleAddStep}>
-              <Ionicons name="add" size={18} color="#E6A153" style={{ marginRight: 6 }} />
+              <Ionicons name="add" size={18} color={colors.primary} style={{ marginRight: 6 }} />
               <Text style={styles.addBtnOutlineText}>Tambah Langkah</Text>
             </TouchableOpacity>
 
             {/* Final Submit Button */}
             <TouchableOpacity
-              style={[styles.primaryButton, { backgroundColor: '#E6A153', marginTop: 24 }]}
+              style={[styles.primaryButton, { backgroundColor: colors.primary, marginTop: 24 }]}
               onPress={handleSubmitRecipe}
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#0D3B36" />
+                <ActivityIndicator color={colors.surface} />
               ) : (
                 <Text style={styles.primaryButtonText}>Unggah Resep</Text>
               )}
@@ -371,8 +492,8 @@ export default function AddRecipeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D3B36',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 12,
+    backgroundColor: colors.background,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 12 : 12,
   },
   header: {
     flexDirection: 'row',
@@ -385,17 +506,17 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     fontWeight: 'bold',
   },
   stepIndicator: {
-    color: '#E6A153',
+    color: colors.primary,
     fontSize: 13,
     fontWeight: 'bold',
   },
@@ -411,12 +532,12 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
     borderWidth: 2,
-    borderColor: '#245D56',
+    borderColor: colors.border,
   },
   previewContainer: {
     position: 'relative',
@@ -431,39 +552,39 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -8,
     right: -8,
-    backgroundColor: '#0D3B36',
+    backgroundColor: colors.background,
     borderRadius: 13,
   },
   galleryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
     marginBottom: 12,
   },
   galleryButtonText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
     fontSize: 12,
   },
   subLabel: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 11,
     marginBottom: 4,
   },
   emojiChip: {
     padding: 8,
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     marginRight: 8,
   },
   emojiChipActive: {
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
   },
   label: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
     fontWeight: 'bold',
     marginBottom: 8,
@@ -473,19 +594,19 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   textInput: {
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 12,
   },
   categoryRow: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   catOption: {
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
@@ -493,14 +614,89 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   catOptionActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.secondary,
   },
   catOptionText: {
-    color: '#B2D0CA',
+    color: colors.textSecondary,
     fontSize: 12,
   },
   catOptionTextActive: {
-    color: '#0D3B36',
+    color: colors.surface,
+    fontWeight: 'bold',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  timeInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    height: 42,
+    marginRight: 8,
+  },
+  timeInput: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  timeUnitText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  presetRow: {
+    flexDirection: 'row',
+  },
+  presetChip: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    marginLeft: 6,
+  },
+  presetChipActive: {
+    backgroundColor: colors.primary,
+  },
+  presetChipText: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  presetChipTextActive: {
+    color: colors.surface,
+    fontWeight: 'bold',
+  },
+  difficultyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  difficultyOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingVertical: 10,
+    marginHorizontal: 4,
+  },
+  difficultyOptionActive: {
+    backgroundColor: colors.primary,
+  },
+  difficultyText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  difficultyTextActive: {
+    color: colors.surface,
     fontWeight: 'bold',
   },
   ingredientInputRow: {
@@ -513,7 +709,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E6A153',
+    borderColor: colors.primary,
     borderStyle: 'dashed',
     borderRadius: 14,
     paddingVertical: 10,
@@ -521,31 +717,31 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   addBtnOutlineText: {
-    color: '#E6A153',
+    color: colors.primary,
     fontSize: 13,
     fontWeight: '600',
   },
   primaryButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.primary,
     borderRadius: 25,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 10,
   },
   primaryButtonText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
     fontSize: 14,
   },
   sectionHeaderTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
   },
   stepInputCard: {
     flexDirection: 'row',
-    backgroundColor: '#184943',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 12,
     marginBottom: 12,
@@ -555,19 +751,19 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   stepNumberText: {
-    color: '#0D3B36',
+    color: colors.surface,
     fontWeight: 'bold',
     fontSize: 12,
   },
   stepTextInput: {
     flex: 1,
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 13,
     minHeight: 40,
   },

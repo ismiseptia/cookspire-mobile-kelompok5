@@ -7,6 +7,7 @@ import HomeScreen from '../screens/HomeScreen';
 import SearchScreen from '../screens/SearchScreen';
 import FavoriteRecipesScreen from '../screens/FavoriteRecipesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import { colors } from '../theme';
 
 // Dummy component khusus untuk slot tombol Tambah di Bottom Bar
 const DummyComponent = () => null;
@@ -19,14 +20,15 @@ export default function MainTabNavigator() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#092A27',
-          borderTopWidth: 0,
+          backgroundColor: colors.surface,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
           height: 65,
           paddingBottom: 10,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: '#E6A153',
-        tabBarInactiveTintColor: '#81A39D',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarIcon: ({ color, size, focused }) => {
           let iconName;
           if (route.name === 'Beranda') iconName = focused ? 'home' : 'home-outline';
@@ -53,7 +55,7 @@ export default function MainTabNavigator() {
               onPress={() => navigation.navigate('AddRecipe')}
             >
               <View style={styles.addBtn}>
-                <Ionicons name="add" size={28} color="#0D3B36" />
+                <Ionicons name="add" size={28} color={colors.surface} />
               </View>
             </TouchableOpacity>
           ),
@@ -77,11 +79,11 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#E6A153',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const authController = require('../controllers/authController');
+const { authenticate } = require('../middleware/auth');
 
 let bcrypt;
 try {
@@ -31,27 +32,88 @@ const validatePassword = (req, res, next) => {
 router.post('/register', validatePassword, authController.register);
 router.post('/login', authController.login);
 
-// Update Profil Pengguna
-router.put('/user/profile/:userId', async (req, res) => {
+// Ambil Profil Pengguna Terbaru dari Database
+router.get('/user/profile/:userId', authenticate, async (req, res) => {
   try {
     const { userId } = req.params;
-    const { nama, bio } = req.body;
+    let rows;
+
+    try {
+      [rows] = await db.query(
+        'SELECT id_user, nama, email, foto, bio FROM user WHERE id_user = ?',
+        [userId]
+      );
+    } catch (err) {
+      if (err.code === 'ER_BAD_FIELD_ERROR') {
+        [rows] = await db.query(
+          'SELECT id_user, nama, email, foto FROM user WHERE id_user = ?',
+          [userId]
+        );
+      } else {
+        throw err;
+      }
+    }
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+    }
+
+    res.json({
+      success: true,
+      user: { bio: '', ...rows[0] },
+    });
+  } catch (error) {
+    console.error('Error Get Profile:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengambil profil pengguna.' });
+  }
+});
+
+// Update Profil Pengguna (Nama, Foto, Bio) ke Database
+router.put('/user/profile/:userId', authenticate, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { nama, bio, foto } = req.body;
+
+    if (String(userId) !== String(req.user.id_user)) {
+      return res.status(403).json({ success: false, message: 'Anda hanya dapat mengubah profil sendiri.' });
+    }
 
     if (!nama || !nama.trim()) {
       return res.status(400).json({ success: false, message: 'Nama lengkap tidak boleh kosong.' });
     }
 
-    await db.query('UPDATE user SET nama = ? WHERE id_user = ?', [nama.trim(), userId]);
+    const cleanFoto = foto && String(foto).trim() !== '' ? String(foto).trim() : null;
+    const cleanBio = bio !== undefined && bio !== null ? String(bio).trim() : '';
 
-    const [updatedUsers] = await db.query(
-      'SELECT id_user, nama, email FROM user WHERE id_user = ?',
-      [userId]
-    );
+    let updatedUsers;
+    try {
+      await db.query(
+        'UPDATE user SET nama = ?, foto = ?, bio = ? WHERE id_user = ?',
+        [nama.trim(), cleanFoto, cleanBio, userId]
+      );
+      [updatedUsers] = await db.query(
+        'SELECT id_user, nama, email, foto, bio FROM user WHERE id_user = ?',
+        [userId]
+      );
+    } catch (err) {
+      if (err.code === 'ER_BAD_FIELD_ERROR') {
+        await db.query(
+          'UPDATE user SET nama = ?, foto = ? WHERE id_user = ?',
+          [nama.trim(), cleanFoto, userId]
+        );
+        [updatedUsers] = await db.query(
+          'SELECT id_user, nama, email, foto FROM user WHERE id_user = ?',
+          [userId]
+        );
+      } else {
+        throw err;
+      }
+    }
 
     res.json({
       success: true,
       message: 'Profil berhasil diperbarui.',
-      user: { ...updatedUsers[0], bio: bio || '' },
+      user: { bio: cleanBio, ...updatedUsers[0] },
     });
   } catch (error) {
     console.error('Error Update Profile:', error);
@@ -81,7 +143,7 @@ router.post('/forgot-password', async (req, res) => {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    otpStore[email] = { otp, expires: Date.now() + 5 * 60 * 1000 }; // Berlaku 5 menit
+    otpStore[email] = { otp, expires: Date.now() + 5 * 60 * 1000 };
 
     console.log(`[DEV OTP] Kode untuk ${email}: ${otp}`);
 
@@ -114,7 +176,7 @@ router.post('/verify-otp', (req, res) => {
   res.json({ success: true, message: 'Kode OTP valid.' });
 });
 
-// 3. Reset Password Baru (Hash dengan bcrypt sebelum disimpan)
+// 3. Reset Password Baru
 router.post('/reset-password', validatePassword, async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
